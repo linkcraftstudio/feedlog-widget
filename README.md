@@ -34,7 +34,19 @@ createWidget({
 })
 ```
 
-That is the entire integration. `createWidget` is the only export: no return value, no instance methods, no events. The launcher opens the panel; the panel's own close button closes it.
+That is the entire integration. The launcher opens the panel; the panel's own close button closes it.
+
+### Opening it yourself
+
+`openWidget()` and `closeWidget()` drive the same panel from anywhere in your app, so you can add entry points the launcher cannot reach — a "having trouble?" link inside your own sign-in dialog, a menu item, a prompt after a failed action.
+
+```js
+import { openWidget, closeWidget } from '@feedlog/widget'
+
+document.querySelector('#need-help').onclick = () => openWidget()
+```
+
+Call `createWidget` once first. Before it finishes booting the call is replayed once the panel mounts; when the widget is switched off for your workspace, both functions do nothing.
 
 ### Without a user system
 
@@ -108,7 +120,7 @@ Source layout:
 
 ```
 src/
-  index.ts          createWidget — the only export, with single-call protection
+  index.ts          createWidget / openWidget / closeWidget, with single-call protection
   widget.ts         orchestration: boot, open/close, iframe lifecycle, postMessage dispatch
   auth.ts           the auth flow, with single-flight de-duplication
   session-cache.ts  session-token cache in localStorage, keyed by email

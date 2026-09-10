@@ -1,14 +1,17 @@
 import type { WidgetOptions } from './types'
-import { boot } from './widget'
+import { boot, type Widget } from './widget'
 
 export type { WidgetAuth, WidgetOptions, WidgetTheme } from './types'
 
 let created = false
+let widget: Widget | null = null
+/** True once boot settled, whether or not it produced a widget. */
+let settled = false
+let queued: 'open' | 'close' | null = null
 
 /**
- * Mounts the FeedLog feedback widget. This is the entire public surface: there
- * is no return value, no instance and no events — the widget manages its own
- * visibility (launcher opens it, the panel's own close button closes it).
+ * Mounts the FeedLog feedback widget. Call it once; drive it afterwards with
+ * `openWidget()` / `closeWidget()` if you want entry points of your own.
  */
 export function createWidget(options: WidgetOptions): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
@@ -52,5 +55,38 @@ export function createWidget(options: WidgetOptions): void {
     auth: options.auth,
     theme: options.theme ?? 'auto',
     embedPath,
+  }).then((mounted) => {
+    widget = mounted
+    settled = true
+    if (mounted && queued) run(mounted, queued)
+    queued = null
   })
+}
+
+/** Opens the panel, exactly as a click on the launcher would. */
+export function openWidget(): void {
+  command('open')
+}
+
+export function closeWidget(): void {
+  command('close')
+}
+
+function command(kind: 'open' | 'close'): void {
+  if (!created) {
+    console.warn(`[feedlog/widget] ${kind}Widget() called before createWidget(); ignoring`)
+    return
+  }
+  if (widget) {
+    run(widget, kind)
+    return
+  }
+  // Still booting: replay once it mounts. Already settled without a widget
+  // (disabled, or config unreachable) means there is nothing to drive.
+  if (!settled) queued = kind
+}
+
+function run(target: Widget, kind: 'open' | 'close'): void {
+  if (kind === 'open') void target.open()
+  else target.close()
 }

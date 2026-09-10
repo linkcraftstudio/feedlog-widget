@@ -1,5 +1,8 @@
 import type { ExchangeResponse, WidgetConfig } from './types'
 
+const OFFSET_DEFAULT = 20
+const OFFSET_MAX = 200
+
 /** Thrown by `unread` so the caller can tell "session is dead" from "network hiccup". */
 export class UnauthorizedError extends Error {
   constructor() {
@@ -22,7 +25,17 @@ export async function fetchConfig(baseUrl: string): Promise<WidgetConfig | null>
       primary: body.branding?.primary || '#111827',
       primaryForeground: body.branding?.primaryForeground || '#FFFFFF',
     },
+    launcher: {
+      alignment: body.launcher?.alignment === 'left' ? 'left' : 'right',
+      bottomOffset: clampOffset(body.launcher?.bottomOffset),
+    },
   }
+}
+
+function clampOffset(value: unknown): number {
+  const n = Math.trunc(Number(value))
+  if (!Number.isFinite(n) || n < 0) return OFFSET_DEFAULT
+  return Math.min(n, OFFSET_MAX)
 }
 
 export async function exchange(baseUrl: string, jwt: string): Promise<ExchangeResponse> {

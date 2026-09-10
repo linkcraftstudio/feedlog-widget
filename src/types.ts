@@ -42,6 +42,13 @@ export interface WidgetConfig {
     primary: string
     primaryForeground: string
   }
+  launcher: LauncherPlacement
+}
+
+/** Set by the customer in their FeedLog dashboard. Desktop only. */
+export interface LauncherPlacement {
+  alignment: 'left' | 'right'
+  bottomOffset: number
 }
 
 export interface ExchangeResponse {

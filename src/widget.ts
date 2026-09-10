@@ -18,12 +18,13 @@ export interface BootOptions {
 const LOAD_ERROR = 'Feedback could not be loaded.'
 const PREWARM_TIMEOUT_MS = 3000
 const PREWARM_DELAY_MS = 2500
+const LOGIN_HIDE_MAX_MS = 60_000
 
 interface NavigatorWithConnection extends Navigator {
   connection?: { saveData?: boolean }
 }
 
-export async function boot(options: BootOptions): Promise<void> {
+export async function boot(options: BootOptions): Promise<Widget | null> {
   let config
   try {
     config = await fetchConfig(options.baseUrl)
@@ -35,23 +36,26 @@ export async function boot(options: BootOptions): Promise<void> {
   // its backend is worse than no launcher at all.
   if (!config) {
     console.warn('[feedlog/widget] could not load widget config; nothing was rendered')
-    return
+    return null
   }
-  if (!config.enabled) return
+  if (!config.enabled) return null
 
   await domReady()
-  new Widget(options, new WidgetUi(config.branding, options.theme)).start()
+  const widget = new Widget(options, new WidgetUi(config.branding, options.theme, config.launcher))
+  widget.start()
+  return widget
 }
 
-class Widget {
+export class Widget {
   private readonly auth: AuthManager
   private readonly unread: UnreadTracker
   /** The token the mounted iframe was built with — `null` means a signed-out frame. */
   private frameToken: string | null = null
+  private hiddenForLogin = false
 
   constructor(private readonly options: BootOptions, private readonly ui: WidgetUi) {
     const cache = new SessionCache(options.origin)
-    this.auth = new AuthManager(options.baseUrl, options.origin, options.auth, cache)
+    this.auth = new AuthManager(options.baseUrl, options.origin, this.yieldingAuth(options.auth), cache)
     this.unread = new UnreadTracker(
       options.baseUrl,
       options.origin,
@@ -95,7 +99,14 @@ class Widget {
     void this.open()
   }
 
-  private async open(): Promise<void> {
+  close(): void {
+    this.ui.closePanel()
+  }
+
+  async open(): Promise<void> {
+    // An explicit host command outranks the yield: they asked for the panel
+    // while their own sign-in is up, so give it to them.
+    this.reveal()
     this.ui.openPanel()
     if (!this.ui.hasIframe) this.ui.showLoading()
     // Re-resolving on every open is what keeps the widget aligned with the host's
@@ -127,6 +138,36 @@ class Widget {
       // working frame if there is one, otherwise offer a retry.
       if (!this.ui.hasIframe) this.ui.showError(LOAD_ERROR, () => this.retry())
     }
+    finally {
+      this.reveal()
+    }
+  }
+
+  private yieldingAuth(auth: WidgetAuth | undefined): WidgetAuth | undefined {
+    if (!auth?.login) return auth
+    const login = auth.login
+    return {
+      getToken: () => auth.getToken(),
+      login: async () => {
+        this.hiddenForLogin = true
+        this.ui.setHidden(true)
+        const bail = setTimeout(() => this.reveal(), LOGIN_HIDE_MAX_MS)
+        try {
+          // .call keeps `this` on the host's auth object — a login() written as
+          // an object method would otherwise lose it.
+          await login.call(auth)
+        }
+        finally {
+          clearTimeout(bail)
+        }
+      },
+    }
+  }
+
+  private reveal(): void {
+    if (!this.hiddenForLogin) return
+    this.hiddenForLogin = false
+    this.ui.setHidden(false)
   }
 
   private retry(): void {
