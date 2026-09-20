@@ -64,13 +64,11 @@ export interface Session {
 
 export type AuthReason = 'user' | 'expired'
 
-/**
- * Inbound protocol. The channel is one-way: the iframe talks to the SDK and
- * never the other way around, so there is no outbound counterpart to this.
- */
+/** Requests and events from the trusted FeedLog frame. */
 export type InboundMessage =
   | { v: 1, type: 'ready' }
   | { v: 1, type: 'auth-requested', payload?: { reason?: AuthReason } }
   | { v: 1, type: 'unread', payload?: { count?: number } }
   | { v: 1, type: 'navigate', payload?: { to?: string, slug?: string } }
   | { v: 1, type: 'close-request' }
+  | { v: 1, type: 'page-context-request', payload?: { requestId?: string } }

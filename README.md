@@ -4,7 +4,7 @@ The host-side SDK for the [FeedLog](https://github.com/linkcraftstudio/feedlog) 
 
 - **ESM + TypeScript declarations**, **zero runtime dependencies**, ~5 KB gzipped.
 - **One public function.** No return value, no instance, no events — the widget manages its own open/close state.
-- **Upgrades itself.** The SDK only renders the launcher, badge, panel container, and iframe lifecycle. All the feedback UI lives in a FeedLog-hosted page loaded in a cross-origin iframe, so new features ship with FeedLog — you never bump the SDK for them.
+- **Upgrades itself.** The SDK only renders the launcher, badge, panel container, and iframe lifecycle. All the feedback UI lives in a FeedLog-hosted page loaded in a cross-origin iframe, so UI changes ship with FeedLog. New host-side capabilities, such as page context collection, require an SDK update.
 
 ## Install
 
@@ -143,3 +143,9 @@ The live widget needs a reachable FeedLog backend — there is no bundled mock, 
 ## License
 
 [MIT](./LICENSE)
+
+## Agent page context
+
+For each message, the trusted iframe requests page context by request ID. The SDK responds with the current pathname, document.title and meta description (up to 2000/500/2000 characters). Query parameters, fragments and the page body are excluded. Both sides check message origin and source. This works across SPA navigation without additional options. Older SDK releases can still chat without page context.
+
+The SDK responds to the iframe’s `ready` event with a version-1 `init` message containing `payload.capabilities.pageContext: true`. The iframe requests page context only after this declaration. Older SDKs omit it, so the iframe skips collection without waiting; a declared capability still has a 500 ms response timeout.

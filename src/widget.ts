@@ -169,6 +169,7 @@ class Widget {
 
     switch (message.type) {
       case 'ready':
+        frame.postMessage({ v: 1, type: 'init', payload: { capabilities: { pageContext: true } } }, this.options.origin)
         this.ui.showContent()
         return
       case 'auth-requested':
@@ -183,6 +184,20 @@ class Widget {
       case 'close-request':
         this.ui.closePanel()
         return
+      case 'page-context-request': {
+        const requestId = message.payload?.requestId
+        if (typeof requestId !== 'string' || requestId.length > 100) return
+        const description = document.querySelector<HTMLMetaElement>('meta[name="description"]')?.content
+        frame.postMessage({ v: 1, type: 'page-context', payload: {
+          requestId,
+          context: {
+            pathname: window.location.pathname.slice(0, 2000),
+            ...(document.title ? { title: document.title.slice(0, 500) } : {}),
+            ...(description ? { description: description.slice(0, 2000) } : {}),
+          },
+        } }, this.options.origin)
+        return
+      }
       default:
         // Unknown types are ignored so a newer iframe can ship messages an older
         // SDK has never heard of.
