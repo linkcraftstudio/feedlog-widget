@@ -149,3 +149,8 @@ The live widget needs a reachable FeedLog backend — there is no bundled mock, 
 For each message, the trusted iframe requests page context by request ID. The SDK responds with the current pathname, document.title and meta description (up to 2000/500/2000 characters). Query parameters, fragments and the page body are excluded. Both sides check message origin and source. This works across SPA navigation without additional options. Older SDK releases can still chat without page context.
 
 The SDK responds to the iframe’s `ready` event with a version-1 `init` message containing `payload.capabilities.pageContext: true`. The iframe requests page context only after this declaration. Older SDKs omit it, so the iframe skips collection without waiting; a declared capability still has a 500 ms response timeout.
+
+
+## Mobile panel behavior
+
+On screens up to 520px wide, opening the full-screen panel hides the launcher. Closing the panel restores the launcher and returns keyboard focus to it. The SDK loading and error screens include a close button; loaded content uses its own close button. On wider screens, the launcher remains visible beside the floating panel.

@@ -139,7 +139,24 @@ iframe[hidden] { display: none; }
 }
 .retry:hover { opacity: .9; }
 
+.state-close {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 26px;
+  cursor: pointer;
+}
+.state-close:focus-visible { outline: 2px solid var(--primary); }
+
 @media (max-width: 520px) {
+  .launcher[aria-expanded="true"] { display: none; }
   .root { right: 12px; bottom: 12px; }
   .panel {
     position: fixed;
@@ -170,6 +187,7 @@ export class WidgetUi {
   private readonly badge: HTMLSpanElement
   private readonly panel: HTMLDivElement
   private readonly state: HTMLDivElement
+  private readonly stateClose: HTMLButtonElement
   private readonly stateText: HTMLParagraphElement
   private readonly spinner: HTMLDivElement
   private readonly retryButton: HTMLButtonElement
@@ -196,6 +214,11 @@ export class WidgetUi {
     this.panel.setAttribute('aria-label', 'Feedback')
 
     this.state = el('div', 'state')
+    this.stateClose = el('button', 'state-close')
+    this.stateClose.type = 'button'
+    this.stateClose.setAttribute('aria-label', 'Close feedback')
+    this.stateClose.textContent = '×'
+    this.stateClose.addEventListener('click', () => this.closePanel())
     this.spinner = el('div', 'spinner')
     this.stateText = document.createElement('p')
     this.retryButton = el('button', 'retry')
@@ -203,7 +226,7 @@ export class WidgetUi {
     this.retryButton.textContent = 'Try again'
     this.retryButton.hidden = true
     this.retryButton.addEventListener('click', () => this.retryHandler?.())
-    this.state.append(this.spinner, this.stateText, this.retryButton)
+    this.state.append(this.stateClose, this.spinner, this.stateText, this.retryButton)
     this.panel.appendChild(this.state)
 
     this.launcher = el('button', 'launcher')
@@ -235,11 +258,14 @@ export class WidgetUi {
   openPanel(): void {
     this.panel.hidden = false
     this.launcher.setAttribute('aria-expanded', 'true')
+    if (this.state.hidden) this.iframe?.focus({ preventScroll: true })
+    else this.stateClose.focus({ preventScroll: true })
   }
 
   closePanel(): void {
     this.panel.hidden = true
     this.launcher.setAttribute('aria-expanded', 'false')
+    this.launcher.focus({ preventScroll: true })
   }
 
   setBadge(count: number): void {
@@ -270,9 +296,12 @@ export class WidgetUi {
   }
 
   showContent(): void {
+    const focused = this.host.shadowRoot?.activeElement
+    const moveFocus = this.isOpen && !!focused && this.state.contains(focused)
     this.retryHandler = null
     this.state.hidden = true
     if (this.iframe) this.iframe.hidden = false
+    if (moveFocus) this.iframe?.focus({ preventScroll: true })
   }
 
   /** Replaces any existing frame — a new session is delivered by rebuilding, never by messaging. */
