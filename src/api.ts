@@ -1,4 +1,5 @@
 import type { ExchangeResponse, WidgetConfig } from './types'
+import { closeBehavior, placement } from './display'
 
 /** Thrown by `unread` so the caller can tell "session is dead" from "network hiccup". */
 export class UnauthorizedError extends Error {
@@ -22,6 +23,7 @@ export async function fetchConfig(baseUrl: string): Promise<WidgetConfig | null>
       primary: body.branding?.primary || '#111827',
       primaryForeground: body.branding?.primaryForeground || '#FFFFFF',
     },
+    launcher: { ...placement(body.launcher), closeBehavior: closeBehavior(body.launcher?.closeBehavior) },
   }
 }
 

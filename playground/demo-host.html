@@ -89,7 +89,7 @@
   /* Sticky above the nav and always on screen, so it's obvious at any scroll
      position. Fixed 40px height so the nav's top offset stays predictable. */
   .demo-banner {
-    position: sticky; top: 0; z-index: 60; height: 40px;
+    position: sticky; top: 0; z-index: 30; height: 40px;
     background: var(--brand-tint); border-bottom: 1px solid var(--line-soft);
     display: flex; align-items: center;
   }
@@ -114,7 +114,7 @@
 
   /* ---------- nav ---------- */
   header.nav {
-    position: sticky; top: 40px; z-index: 50;
+    position: sticky; top: 40px; z-index: 20;
     backdrop-filter: saturate(1.2) blur(10px);
     background: color-mix(in srgb, var(--bg) 82%, transparent);
     border-bottom: 1px solid var(--line-soft);
@@ -126,6 +126,11 @@
   .nav-links a { padding: 8px 12px; border-radius: 8px; color: var(--ink-soft); font-size: 15px; font-weight: 550; }
   .nav-links a:hover { color: var(--ink); background: var(--bg-soft); }
   .nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .host-help { position: relative; flex: none; }
+  .host-help summary { cursor: pointer; }
+  .host-help-actions { position: absolute; right: 0; top: 100%; width: 210px; padding: 8px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--bg); box-shadow: 0 4px 20px #0002; }
+  .host-help-actions button { width: 100%; justify-content: flex-start; }
+  @media (max-width: 560px) { .nav-inner { gap: 8px; } .nav-right .btn-primary { display: none; } .brand { font-size: 14px; gap: 5px; } }
   .avatar {
     width: 32px; height: 32px; border-radius: 50%; flex: none;
     background: linear-gradient(135deg, var(--brand), #8a86f5);
@@ -324,6 +329,13 @@
       <a href="#docs">Docs</a>
     </nav>
     <div class="nav-right" id="nav-right"><!-- rendered by JS --></div>
+    <details class="host-help" id="host-help">
+      <summary class="btn btn-ghost btn-sm">Help</summary>
+      <div class="host-help-actions">
+        <button class="btn btn-ghost btn-sm" id="host-open-widget" type="button">Open feedback</button>
+        <button class="btn btn-ghost btn-sm" id="host-restore-launcher" type="button">Show floating button</button>
+      </div>
+    </details>
   </div>
 </header>
 
@@ -468,7 +480,7 @@
     </div>
     <div class="ft-bottom">
       <span>© 2026 Paceboard, Inc. (fictional). All rights reserved.</span>
-      <span class="demo-tag"><span class="badge">Demo</span> Integration host for <b>@feedlog/widget</b> — the launcher is bottom-right.</span>
+      <span class="demo-tag"><span class="badge">Demo</span> Integration host for <b>@feedlog/widget</b> — launcher placement follows your settings.</span>
     </div>
   </div>
 </footer>
@@ -543,6 +555,18 @@
         </select>
       </div>
       <span class="p-hint"><b>host auth: off</b> omits the <code>auth</code> option entirely — the integration a product with no user system of its own would write. The widget then has no host identity, and the embed page mints its own guest on the first message. Needs <b>Guest posting</b> switched on for the org.</span>
+      <span class="p-hint">Drag the button or Help tab to move it. The close button follows the dashboard's closing behavior. Clicking the Help tab restores the button and opens feedback. Hiding lasts until refresh; collapsed tabs are remembered.</span>
+      <span class="lbl">Launcher transitions</span>
+      <span class="p-hint">Outline · Help — 22 × 56px. Drag the tab away from an edge to see all four corners round, then release to dock on either side.</span>
+      <div class="p-row">
+        <button id="p-show-tab" class="btn btn-ghost btn-sm" type="button">Show collapsed tab</button>
+        <button id="p-show-launcher" class="btn btn-ghost btn-sm" type="button">Show launcher</button>
+      </div>
+      <div class="p-row">
+        <button id="p-tab-left" class="btn btn-ghost btn-sm" type="button">Dock left</button>
+        <button id="p-tab-right" class="btn btn-ghost btn-sm" type="button">Dock right</button>
+      </div>
+      <span class="p-hint">Clicking the Help tab restores the round button and opens feedback.</span>
       <div class="p-row">
         <button class="btn btn-ghost btn-sm" id="p-reload" type="button">Apply &amp; reload widget</button>
       </div>
@@ -550,7 +574,7 @@
         <button class="btn btn-ghost btn-sm" id="p-signout" type="button">Sign out</button>
         <button class="btn btn-ghost btn-sm" id="p-clear" type="button">Clear session</button>
       </div>
-      <span class="p-hint">The SDK has no runtime <code>destroy</code> by design, so <b>baseUrl</b> / <b>theme</b> changes reload the page to rebuild the widget cleanly.</span>
+      <span class="p-hint">The SDK has no runtime <code>destroy</code> by design, so <b>baseUrl</b> and authentication changes require a reload. Theme changes apply immediately.</span>
     </div>
 
     <div class="p-group">
@@ -575,21 +599,42 @@
      single self-contained file. The published npm package stays ESM-only. -->
 <script>
 /* FEEDLOG_SDK_START */
-"use strict";var FeedLogWidget=(()=>{var w=Object.defineProperty;var O=Object.getOwnPropertyDescriptor;var I=Object.getOwnPropertyNames;var F=Object.prototype.hasOwnProperty;var H=(i,e)=>{for(var t in e)w(i,t,{get:e[t],enumerable:!0})},N=(i,e,t,r)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of I(e))!F.call(i,n)&&n!==t&&w(i,n,{get:()=>e[n],enumerable:!(r=O(e,n))||r.enumerable});return i};var B=i=>N(w({},"__esModule",{value:!0}),i);var te={};H(te,{createWidget:()=>ee});var h=class extends Error{constructor(){super("Unauthorized"),this.name="UnauthorizedError"}};async function S(i){let e=await fetch(`${i}/api/widget/config`,{method:"GET",credentials:"omit"});if(!e.ok)return null;let t=await e.json();return!t||typeof t!="object"?null:{enabled:t.enabled===!0,branding:{primary:t.branding?.primary||"#111827",primaryForeground:t.branding?.primaryForeground||"#FFFFFF"}}}async function C(i,e){let t=await fetch(`${i}/api/widget/auth/exchange`,{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({jwt:e})});if(!t.ok)throw new Error(`Widget token exchange failed with status ${t.status}`);let r=await t.json();if(!r?.token)throw new Error("Widget token exchange returned no token");return r}async function x(i,e){let t=await fetch(`${i}/api/widget/unread`,{method:"GET",headers:{Authorization:`Bearer ${e}`},credentials:"omit"});if(t.status===401)throw new h;if(!t.ok)throw new Error(`Widget unread request failed with status ${t.status}`);let r=await t.json();return typeof r?.count=="number"&&r.count>0?Math.floor(r.count):0}function T(i){let e=i.split(".");if(e.length<2)return null;let t=e[1];if(!t)return null;try{let r=t.replace(/-/g,"+").replace(/_/g,"/"),n=r+"=".repeat((4-r.length%4)%4),o=atob(n),a=new Uint8Array(o.length);for(let u=0;u<o.length;u++)a[u]=o.charCodeAt(u);let d=JSON.parse(new TextDecoder().decode(a));if(!d||typeof d!="object")return null;let b=d.email;return typeof b!="string"||!b.includes("@")?null:b.trim().toLowerCase()}catch{return null}}function _(i){try{let e=window[i],t="__feedlog_probe__";return e.setItem(t,"1"),e.removeItem(t),e}catch{return null}}function L(i){let e=_(i);if(e)return{get:r=>{try{return e.getItem(r)}catch{return null}},set:(r,n)=>{try{e.setItem(r,n)}catch{}},remove:r=>{try{e.removeItem(r)}catch{}}};let t=new Map;return{get:r=>t.get(r)??null,set:(r,n)=>{t.set(r,n)},remove:r=>{t.delete(r)}}}var P=null,E=null;function c(){return P??(P=L("localStorage")),P}function s(){return E??(E=L("sessionStorage")),E}var D=300*1e3;function p(i){return`feedlog:widget:login-pending:${i}`}function M(i){s().set(p(i),String(Date.now()+D))}function A(i){s().remove(p(i))}function R(i){let e=s().get(p(i));if(!e)return!1;s().remove(p(i));let t=Number(e);return Number.isFinite(t)&&t>Date.now()}var f=class{constructor(e,t,r,n){this.baseUrl=e;this.origin=t;this.auth=r;this.cache=n;this.inflight=null;this.queue=Promise.resolve()}resolve(e={}){let t={allowLogin:e.allowLogin===!0,ignoreCache:e.ignoreCache===!0},r=this.inflight;if(r&&q(r.options,t))return r.promise;let n=this.queue.then(()=>this.run(t)),o={options:t,promise:n};return this.inflight=o,this.queue=n.then(g,g),n.then(g,g).then(()=>{this.inflight===o&&(this.inflight=null)}),n}getCustomerJwt(){let e=this.auth;return e?Promise.resolve().then(()=>e.getToken()):Promise.resolve(null)}async run(e){let t=this.auth;if(!t)return this.cache.clear(),null;let r=await t.getToken();if(!r&&e.allowLogin&&t.login){M(this.origin);try{await t.login()}catch{}A(this.origin),r=await t.getToken()}if(!r)return this.cache.clear(),null;let n=T(r);if(n&&!e.ignoreCache){let d=this.cache.readFor(n);if(d)return d}e.ignoreCache&&this.cache.clear();let o=await C(this.baseUrl,r),a={email:n??o.user?.email??"",token:o.token,expiresAt:o.expiresAt};return n&&this.cache.write(a),a}};function q(i,e){return(i.allowLogin||!e.allowLogin)&&(i.ignoreCache||!e.ignoreCache)}function g(){}var j=6e4,m=class{constructor(e){this.key=`feedlog:widget:session:${e}`}read(){let e=c().get(this.key);if(!e)return null;try{let t=JSON.parse(e);if(typeof t?.email!="string"||typeof t.token!="string"||typeof t.expiresAt!="string")return null;let r={email:t.email,token:t.token,expiresAt:t.expiresAt};return $(r)?(this.clear(),null):r}catch{return this.clear(),null}}readFor(e){let t=this.read();return t?t.email!==e?(this.clear(),null):t:null}write(e){c().set(this.key,JSON.stringify(e))}clear(){c().remove(this.key)}};function $(i){let e=Date.parse(i.expiresAt);return Number.isNaN(e)?!0:e-j<=Date.now()}var K="feedlog-widget",J=`
+"use strict";var FeedLogWidget=(()=>{var T=Object.defineProperty;var Q=Object.getOwnPropertyDescriptor;var ee=Object.getOwnPropertyNames;var te=Object.prototype.hasOwnProperty;var ie=(n,e)=>{for(var t in e)T(n,t,{get:e[t],enumerable:!0})},ne=(n,e,t,i)=>{if(e&&typeof e=="object"||typeof e=="function")for(let r of ee(e))!te.call(n,r)&&r!==t&&T(n,r,{get:()=>e[r],enumerable:!(i=Q(e,r))||i.enumerable});return n};var re=n=>ne(T({},"__esModule",{value:!0}),n);var ke={};ie(ke,{closeWidget:()=>we,createWidget:()=>ye,openWidget:()=>be,updateWidget:()=>xe});function p(n,e){return{theme:e.theme??n.theme,zIndex:e.zIndex??n.zIndex,launcher:{...n.launcher,...Object.fromEntries(Object.entries(e.launcher??{}).filter(([,t])=>t!==void 0))}}}function v(n){return{alignment:n?.alignment==="left"?"left":"right",bottomOffset:U(n?.bottomOffset),sideOffset:U(n?.sideOffset)}}function U(n){return typeof n=="number"&&Number.isSafeInteger(n)&&n>=0?n:20}function E(n){let e=n.launcher;if(e?.alignment!==void 0&&e.alignment!=="left"&&e.alignment!=="right")throw new TypeError("[feedlog/widget] launcher.alignment must be left or right");for(let t of["bottomOffset","sideOffset"]){let i=e?.[t];if(i!==void 0&&(!Number.isSafeInteger(i)||i<0))throw new TypeError(`[feedlog/widget] launcher.${t} must be a non-negative safe integer`)}if(e?.state!==void 0&&!["button","tab","hidden"].includes(e.state))throw new TypeError("[feedlog/widget] launcher.state must be button, tab or hidden");if(n.theme!==void 0&&!["light","dark","auto"].includes(n.theme))throw new TypeError("[feedlog/widget] theme must be light, dark or auto");if(n.zIndex!==void 0&&(!Number.isInteger(n.zIndex)||n.zIndex<0||n.zIndex>2147483647))throw new TypeError("[feedlog/widget] zIndex must be an integer between 0 and 2147483647")}function y(n){return n==="none"?"none":n==="hide"?"hide":"collapse"}function D(n,e){return e==="none"?"button":n==="tab"||n==="hidden"&&e==="hide"?n:"button"}function H(n,e){return D(n==="hidden"?"button":n,e)}var g=class extends Error{constructor(){super("Unauthorized"),this.name="UnauthorizedError"}};async function F(n){let e=await fetch(`${n}/api/widget/config`,{method:"GET",credentials:"omit"});if(!e.ok)return null;let t=await e.json();return!t||typeof t!="object"?null:{enabled:t.enabled===!0,branding:{primary:t.branding?.primary||"#111827",primaryForeground:t.branding?.primaryForeground||"#FFFFFF"},launcher:{...v(t.launcher),closeBehavior:y(t.launcher?.closeBehavior)}}}async function z(n,e){let t=await fetch(`${n}/api/widget/auth/exchange`,{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({jwt:e})});if(!t.ok)throw new Error(`Widget token exchange failed with status ${t.status}`);let i=await t.json();if(!i?.token)throw new Error("Widget token exchange returned no token");return i}async function M(n,e){let t=await fetch(`${n}/api/widget/unread`,{method:"GET",headers:{Authorization:`Bearer ${e}`},credentials:"omit"});if(t.status===401)throw new g;if(!t.ok)throw new Error(`Widget unread request failed with status ${t.status}`);let i=await t.json();return typeof i?.count=="number"&&i.count>0?Math.floor(i.count):0}function N(n){let e=n.split(".");if(e.length<2)return null;let t=e[1];if(!t)return null;try{let i=t.replace(/-/g,"+").replace(/_/g,"/"),r=i+"=".repeat((4-i.length%4)%4),a=atob(r),o=new Uint8Array(a.length);for(let u=0;u<a.length;u++)o[u]=a.charCodeAt(u);let s=JSON.parse(new TextDecoder().decode(o));if(!s||typeof s!="object")return null;let h=s.email;return typeof h!="string"||!h.includes("@")?null:h.trim().toLowerCase()}catch{return null}}function ae(n){try{let e=window[n],t="__feedlog_probe__";return e.setItem(t,"1"),e.removeItem(t),e}catch{return null}}function _(n){let e=ae(n);if(e)return{get:i=>{try{return e.getItem(i)}catch{return null}},set:(i,r)=>{try{e.setItem(i,r)}catch{}},remove:i=>{try{e.removeItem(i)}catch{}}};let t=new Map;return{get:i=>t.get(i)??null,set:(i,r)=>{t.set(i,r)},remove:i=>{t.delete(i)}}}var K=null,q=null;function b(){return K??(K=_("localStorage")),K}function l(){return q??(q=_("sessionStorage")),q}var oe=300*1e3;function w(n){return`feedlog:widget:login-pending:${n}`}function $(n){l().set(w(n),String(Date.now()+oe))}function j(n){l().remove(w(n))}function V(n){let e=l().get(w(n));if(!e)return!1;l().remove(w(n));let t=Number(e);return Number.isFinite(t)&&t>Date.now()}var k=class{constructor(e,t,i,r){this.baseUrl=e;this.origin=t;this.auth=i;this.cache=r;this.inflight=null;this.queue=Promise.resolve()}resolve(e={}){let t={allowLogin:e.allowLogin===!0,ignoreCache:e.ignoreCache===!0},i=this.inflight;if(i&&se(i.options,t))return i.promise;let r=this.queue.then(()=>this.run(t)),a={options:t,promise:r};return this.inflight=a,this.queue=r.then(x,x),r.then(x,x).then(()=>{this.inflight===a&&(this.inflight=null)}),r}getCustomerJwt(){let e=this.auth;return e?Promise.resolve().then(()=>e.getToken()):Promise.resolve(null)}async run(e){let t=this.auth;if(!t)return this.cache.clear(),null;let i=await t.getToken();if(!i&&e.allowLogin&&t.login){$(this.origin);try{await t.login()}catch{}j(this.origin),i=await t.getToken()}if(!i)return this.cache.clear(),null;let r=N(i);if(r&&!e.ignoreCache){let s=this.cache.readFor(r);if(s)return s}e.ignoreCache&&this.cache.clear();let a=await z(this.baseUrl,i),o={email:r??a.user?.email??"",token:a.token,expiresAt:a.expiresAt};return r&&this.cache.write(o),o}};function se(n,e){return(n.allowLogin||!e.allowLogin)&&(n.ignoreCache||!e.ignoreCache)}function x(){}var le=6e4,L=class{constructor(e){this.key=`feedlog:widget:session:${e}`}read(){let e=b().get(this.key);if(!e)return null;try{let t=JSON.parse(e);if(typeof t?.email!="string"||typeof t.token!="string"||typeof t.expiresAt!="string")return null;let i={email:t.email,token:t.token,expiresAt:t.expiresAt};return he(i)?(this.clear(),null):i}catch{return this.clear(),null}}readFor(e){let t=this.read();return t?t.email!==e?(this.clear(),null):t:null}write(e){b().set(this.key,JSON.stringify(e))}clear(){b().remove(this.key)}};function he(n){let e=Date.parse(n.expiresAt);return Number.isNaN(e)?!0:e-le<=Date.now()}function J(n){if(!n)return null;try{let e=JSON.parse(n);return!e||e.alignment!=="left"&&e.alignment!=="right"||typeof e.y!="number"||!Number.isFinite(e.y)||e.y<0||e.y>1?null:{alignment:e.alignment,y:e.y}}catch{return null}}function c(n,e,t){return Math.max(e,Math.min(n,Math.max(e,t)))}function X(n,e,t){let o=n.top-e.top-16,s=e.bottom-n.bottom-16,h=Math.min(400,Math.max(0,e.right-e.left)),u=c(t==="left"?n.left:n.right-h,e.left,e.right-h);if(o>=480){let m=Math.min(680,o);return{left:u,top:n.top-16-m,width:h,height:m}}if(s>=480)return{left:u,top:n.bottom+16,width:h,height:Math.min(680,s)};let A=t==="left"?n.right+16:n.left-h-16,W=t==="left"?n.left-h-16:n.right+16,B=m=>m>=e.left&&m+h<=e.right,C=Math.min(680,Math.max(0,e.bottom-e.top));return{left:B(A)?A:B(W)?W:u,top:c(n.bottom-C,e.top,e.bottom-C),width:h,height:C}}var de="feedlog-widget",ue=`
 :host { all: initial; }
 * { box-sizing: border-box; }
 
 .root {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 2147483000;
+  --side-offset: 20px;
+  --bottom-offset: 20px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --launcher-duration: 220ms;
+  --launcher-ease: cubic-bezier(.22, 1, .36, 1);
+  --tab-safe-inset: var(--safe-right);
+  --tab-content-start: 0px;
+  right: min(calc(var(--side-offset) + var(--safe-right)), calc(100% - 112px - var(--safe-left)));
+  bottom: min(calc(var(--bottom-offset) + var(--safe-bottom)), calc(100dvh - 76px - var(--safe-top)));
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
+  z-index: var(--z-index, ${40});
   font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color-scheme: light;
   --surface: #ffffff;
   --ink: #1f2937;
   --muted: #6b7280;
   --line: #e5e7eb;
+}
+.root[hidden] { display: block; visibility: hidden; pointer-events: none; }
+.launcher, .panel { pointer-events: auto; }
+.root[data-alignment="left"] {
+  right: auto;
+  left: min(calc(var(--side-offset) + var(--safe-left)), calc(100% - 112px - var(--safe-right)));
+  --tab-safe-inset: var(--safe-left);
+  --tab-content-start: var(--safe-left);
 }
 .root[data-theme="dark"] {
   color-scheme: dark;
@@ -600,26 +645,124 @@
 }
 
 .launcher {
-  position: relative;
+  position: absolute;
+  bottom: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 56px;
   height: 56px;
   padding: 0;
-  border: 0;
-  border-radius: 50%;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 28px;
   background: var(--primary);
   color: var(--primary-foreground);
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(0, 0, 0, .22);
-  transition: transform .15s ease, opacity .15s ease;
+  transition: width var(--launcher-duration) var(--launcher-ease),
+    padding var(--launcher-duration) var(--launcher-ease),
+    border-radius var(--launcher-duration) var(--launcher-ease),
+    background-color var(--launcher-duration) ease,
+    border-color var(--launcher-duration) ease,
+    color var(--launcher-duration) ease,
+    box-shadow var(--launcher-duration) ease, opacity .15s ease;
   -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
+.launcher[hidden] { display: none; }
+.root[data-alignment="left"] .launcher { left: 0; right: auto; }
+.launcher[data-state="tab"] {
+  width: calc(22px + var(--tab-safe-inset));
+  padding-right: var(--tab-safe-inset);
+  border-radius: 8px 0 0 8px;
+  background: var(--surface);
+  color: var(--primary);
+  border-color: var(--line);
+  border-right-color: transparent;
+  box-shadow: -2px 1px 6px rgba(0, 0, 0, .06);
+}
+.root[data-alignment="left"] .launcher[data-state="tab"] {
+  padding-right: 0;
+  padding-left: var(--tab-safe-inset);
+  border-radius: 0 8px 8px 0;
+  border-right-color: var(--line);
+  border-left-color: transparent;
+  box-shadow: 2px 1px 6px rgba(0, 0, 0, .06);
+}
+/* A narrow visible tab keeps a reachable touch target on the inward side. */
+.launcher[data-state="tab"]::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: max(100%, calc(44px + var(--tab-safe-inset)));
+  height: max(100%, 44px);
+  transform: translateY(-50%);
+}
+.root[data-alignment="left"] .launcher[data-state="tab"]::after { left: 0; right: auto; }
+.launcher > svg, .tab-label {
+  position: absolute;
+  pointer-events: none;
+  transition: opacity .16s ease, transform var(--launcher-duration) var(--launcher-ease);
+}
+.launcher > svg { width: 26px; height: 26px; opacity: 1; transform: scale(1); }
+.launcher[data-state="tab"] > svg { opacity: 0; transform: scale(.65); }
+.tab-label { writing-mode: vertical-rl; opacity: 0; transform: scale(.85); }
+.launcher[data-state="tab"] .tab-label { opacity: 1; transform: scale(1); }
 .launcher:hover { opacity: .9; }
-.launcher:active { transform: scale(.95); }
+.root[data-dragging="true"] .launcher { cursor: grabbing; }
+.root[data-dragging="true"] .launcher:focus-visible { outline: none; }
+.root[data-dragging="true"] .launcher[data-state="tab"] {
+  border-radius: 8px;
+  border-color: var(--line);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+}
+.root[data-dragging="true"] .launcher-close, .root[data-snapping="true"] .launcher-close { display: none; }
 .launcher:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-.launcher svg { width: 26px; height: 26px; display: block; }
+
+.launcher-close {
+  position: absolute;
+  left: -20px;
+  top: var(--launcher-close-top, -20px);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  touch-action: manipulation;
+}
+.launcher-close span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+.launcher-close svg { width: 18px; height: 18px; stroke-width: 1.8; }
+.root[data-theme="dark"] .launcher-close { color: #94a3b8; }
+.launcher-close:hover { color: var(--ink); }
+.launcher-close:active span { transform: scale(.9); }
+.root[data-alignment="left"] .launcher-close { left: auto; right: -20px; }
+.root:hover .launcher-close, .root:focus-within .launcher-close { opacity: 1; pointer-events: auto; }
+.launcher-close[hidden], .root[data-panel-open="true"] .launcher-close { display: none; }
+.launcher-close:focus-visible span { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+@media (hover: none), (pointer: coarse) {
+  .launcher-close { opacity: 1; pointer-events: auto; }
+}
 
 .badge {
   position: absolute;
@@ -639,14 +782,28 @@
   box-shadow: 0 0 0 2px var(--surface);
 }
 .badge[hidden] { display: none; }
+.root[data-alignment="left"] .badge { left: -2px; right: auto; }
+.root .launcher[data-state="tab"] .badge {
+  left: calc(var(--tab-content-start) + (100% - var(--tab-safe-inset)) / 2);
+  right: auto;
+  top: 4px;
+  transform: translateX(-50%);
+  min-width: 5px;
+  width: 5px;
+  height: 5px;
+  font-size: 0;
+  line-height: 0;
+  padding: 0;
+  box-shadow: none;
+}
 
 .panel {
-  position: absolute;
-  right: 0;
-  bottom: 72px;
+  position: fixed;
+  left: var(--panel-left);
+  top: var(--panel-top);
   display: flex;
-  width: 400px;
-  height: min(680px, calc(100vh - 120px));
+  width: var(--panel-width);
+  height: var(--panel-height);
   overflow: hidden;
   border-radius: 16px;
   background: var(--surface);
@@ -697,6 +854,7 @@ iframe[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation-duration: 2.4s; }
   .panel { animation: none; }
+  .launcher, .launcher > svg, .tab-label { transition: none; }
 }
 
 .retry {
@@ -712,8 +870,24 @@ iframe[hidden] { display: none; }
 }
 .retry:hover { opacity: .9; }
 
+.state-close {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 26px;
+  cursor: pointer;
+}
+.state-close:focus-visible { outline: 2px solid var(--primary); }
+
 @media (max-width: 520px) {
-  .root { right: 12px; bottom: 12px; }
+  .launcher[aria-expanded="true"] { display: none; }
   .panel {
     position: fixed;
     inset: 0;
@@ -722,7 +896,7 @@ iframe[hidden] { display: none; }
     border-radius: 0;
   }
 }
-`,z='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9"/><path d="M12 15 12.4 12.05 17.35 4.5a1.25 1.25 0 0 1 2.1 1.36L14.5 13.4Z"/><path d="M7 13.5h3"/><path d="M7 17.5h4.5"/></svg>',y=class{constructor(e,t){this.iframe=null;this.retryHandler=null;this.host=document.createElement("div"),this.host.id=K;let r=this.host.attachShadow({mode:"open"}),n=document.createElement("style");n.textContent=J,r.appendChild(n),this.root=l("div","root"),this.root.style.setProperty("--primary",e.primary),this.root.style.setProperty("--primary-foreground",e.primaryForeground),V(this.root,t),this.panel=l("div","panel"),this.panel.hidden=!0,this.panel.setAttribute("role","dialog"),this.panel.setAttribute("aria-label","Feedback"),this.state=l("div","state"),this.spinner=l("div","spinner"),this.stateText=document.createElement("p"),this.retryButton=l("button","retry"),this.retryButton.type="button",this.retryButton.textContent="Try again",this.retryButton.hidden=!0,this.retryButton.addEventListener("click",()=>this.retryHandler?.()),this.state.append(this.spinner,this.stateText,this.retryButton),this.panel.appendChild(this.state),this.launcher=l("button","launcher"),this.launcher.type="button",this.launcher.setAttribute("aria-label","Feedback"),this.launcher.setAttribute("aria-expanded","false"),this.launcher.innerHTML=z,this.badge=l("span","badge"),this.badge.hidden=!0,this.badge.setAttribute("aria-live","polite"),this.launcher.appendChild(this.badge),this.root.append(this.panel,this.launcher),r.appendChild(this.root)}mount(){document.body.appendChild(this.host)}onLauncherClick(e){this.launcher.addEventListener("click",e)}get isOpen(){return!this.panel.hidden}openPanel(){this.panel.hidden=!1,this.launcher.setAttribute("aria-expanded","true")}closePanel(){this.panel.hidden=!0,this.launcher.setAttribute("aria-expanded","false")}setBadge(e){if(e<=0){this.badge.hidden=!0;return}this.badge.textContent=e>9?"9+":String(e),this.badge.hidden=!1}showLoading(){this.retryHandler=null,this.spinner.hidden=!1,this.stateText.textContent="",this.retryButton.hidden=!0,this.state.hidden=!1,this.iframe&&(this.iframe.hidden=!0)}showError(e,t){this.retryHandler=t,this.spinner.hidden=!0,this.stateText.textContent=e,this.retryButton.hidden=!1,this.state.hidden=!1,this.iframe&&(this.iframe.hidden=!0)}showContent(){this.retryHandler=null,this.state.hidden=!0,this.iframe&&(this.iframe.hidden=!1)}setIframe(e){this.removeIframe();let t=document.createElement("iframe");t.title="Feedback",t.hidden=!0,t.setAttribute("allow","clipboard-write"),t.src=e,this.panel.appendChild(t),this.iframe=t}removeIframe(){this.iframe?.remove(),this.iframe=null}get frameWindow(){return this.iframe?.contentWindow??null}get hasIframe(){return this.iframe!==null}};function l(i,e){let t=document.createElement(i);return t.className=e,t}function V(i,e){if(e!=="auto"){i.dataset.theme=e;return}let t=window.matchMedia("(prefers-color-scheme: dark)"),r=()=>{i.dataset.theme=t.matches?"dark":"light"};r(),t.addEventListener("change",r)}var Y=6e4,v=class{constructor(e,t,r,n,o){this.baseUrl=e;this.auth=r;this.onCount=n;this.hasHostAuth=o;this.live=!1;this.pending=null;this.key=`feedlog:widget:unread:${t}`}takeOver(){this.live=!0}releaseOwnership(){this.live=!1}push(e){let t=Number.isFinite(e)&&e>0?Math.floor(e):0;this.write(t),this.onCount(t)}start(){let e=this.read();e&&this.onCount(e.count),this.refresh(),document.addEventListener("visibilitychange",()=>{document.visibilityState==="visible"&&this.refresh()})}refresh(){if(this.live||!this.hasHostAuth)return Promise.resolve();let e=this.read();return e&&Date.now()-e.at<Y?Promise.resolve():(this.pending??(this.pending=this.load().finally(()=>{this.pending=null})),this.pending)}async load(){try{let e=await this.auth.resolve();if(!e){this.clear(),this.onCount(0);return}let t;try{t=await x(this.baseUrl,e.token)}catch(r){if(!(r instanceof h))throw r;let n=await this.auth.resolve({ignoreCache:!0});if(!n){this.clear(),this.onCount(0);return}t=await x(this.baseUrl,n.token)}this.write(t),this.onCount(t)}catch{}}read(){let e=s().get(this.key);if(!e)return null;try{let t=JSON.parse(e);return typeof t?.count!="number"||typeof t.at!="number"?null:{count:t.count,at:t.at}}catch{return null}}write(e){s().set(this.key,JSON.stringify({count:e,at:Date.now()}))}clear(){s().remove(this.key)}};var G="Feedback could not be loaded.",X=3e3,Z=2500;async function U(i){let e;try{e=await S(i.baseUrl)}catch{e=null}if(!e){console.warn("[feedlog/widget] could not load widget config; nothing was rendered");return}e.enabled&&(await Q(),new k(i,new y(e.branding,i.theme)).start())}var k=class{constructor(e,t){this.options=e;this.ui=t;this.frameToken=null;this.onMessage=e=>{if(e.origin!==this.options.origin)return;let t=this.ui.frameWindow;if(!t||e.source!==t)return;let r=e.data;if(!r||typeof r!="object")return;let n=r;if(!(n.v!==1||typeof n.type!="string"))switch(n.type){case"ready":this.ui.showContent();return;case"auth-requested":this.handleAuthRequest(n.payload?.reason);return;case"unread":this.unread.push(Number(n.payload?.count));return;case"navigate":this.handleNavigate(n.payload);return;case"close-request":this.ui.closePanel();return;default:}};let r=new m(e.origin);this.auth=new f(e.baseUrl,e.origin,e.auth,r),this.unread=new v(e.baseUrl,e.origin,this.auth,n=>this.ui.setBadge(n),!!e.auth)}start(){this.ui.mount(),this.ui.onLauncherClick(()=>this.toggle()),window.addEventListener("message",this.onMessage),this.unread.start(),R(this.options.origin)&&this.open(),this.prewarm()}prewarm(){if(navigator.connection?.saveData)return;let e=()=>{this.ui.hasIframe||this.sync({})};typeof requestIdleCallback=="function"?requestIdleCallback(e,{timeout:X}):setTimeout(e,Z)}toggle(){if(this.ui.isOpen){this.ui.closePanel();return}this.open()}async open(){this.ui.openPanel(),this.ui.hasIframe||this.ui.showLoading(),await this.sync({})}async sync(e,t){try{let r=await this.auth.resolve(e);r&&t&&r.token===t&&(r=await this.auth.resolve({...e,ignoreCache:!0}));let n=r?.token??null;(!this.ui.hasIframe||n!==this.frameToken)&&this.mountFrame(n)}catch{this.ui.hasIframe||this.ui.showError(G,()=>this.retry())}}retry(){this.ui.showLoading(),this.sync({})}mountFrame(e){this.frameToken=e,this.ui.showLoading(),this.unread.takeOver(),e||this.unread.push(0);let t=new URL(this.options.embedPath,this.options.baseUrl);t.searchParams.set("theme",this.options.theme),t.searchParams.set("origin",window.location.origin);let r=e?`${t.toString()}#token=${encodeURIComponent(e)}`:t.toString();this.ui.setIframe(r)}handleAuthRequest(e){return this.sync({allowLogin:e==="user",ignoreCache:e==="expired"},this.frameToken)}async handleNavigate(e){let t=e?.slug;if(e?.to!=="feedback"||typeof t!="string"||!t)return;let r=`/p/${encodeURIComponent(t)}`,n=new URL(r,this.options.baseUrl).toString();try{let o=await this.auth.getCustomerJwt();if(o){let a=new URL("/api/sso/jwt",this.options.baseUrl);a.searchParams.set("jwt",o),a.searchParams.set("return_to",r),n=a.toString()}}catch{}window.open(n,"_blank","noopener")}};function Q(){return document.body?Promise.resolve():new Promise(i=>{document.addEventListener("DOMContentLoaded",()=>i(),{once:!0})})}var W=!1;function ee(i){if(typeof window>"u"||typeof document>"u")return;if(W){console.warn("[feedlog/widget] createWidget() was already called; ignoring this call");return}if(!i?.baseUrl||typeof i.baseUrl!="string")throw new TypeError("[feedlog/widget] createWidget requires a baseUrl");if(i.auth!==void 0&&typeof i.auth?.getToken!="function")throw new TypeError("[feedlog/widget] auth.getToken must be a function");let e=i.baseUrl.replace(/\/+$/,""),t;try{t=new URL(e).origin}catch{throw new TypeError(`[feedlog/widget] baseUrl is not a valid URL: ${i.baseUrl}`)}let r=i.embedPath??"/widget/embed",n=typeof r=="string"&&r.startsWith("/")&&!r.startsWith("//")?r:"/widget/embed";W=!0,U({baseUrl:e,origin:t,auth:i.auth,theme:i.theme??"auto",embedPath:n})}return B(te);})();
+`,ce='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9"/><path d="M12 15 12.4 12.05 17.35 4.5a1.25 1.25 0 0 1 2.1 1.36L14.5 13.4Z"/><path d="M7 13.5h3"/><path d="M7 17.5h4.5"/></svg>',P=class{constructor(e,t){this.theme="auto";this.launcherStateHandler=null;this.positionHandler=null;this.placement={alignment:"right",sideOffset:20,bottomOffset:20};this.docked=null;this.drag=null;this.suppressClick=!1;this.snapAnimation=null;this.returnFocus=null;this.iframe=null;this.retryHandler=null;this.host=document.createElement("div"),this.host.id=de;let i=this.host.attachShadow({mode:"open"}),r=document.createElement("style");r.textContent=ue,i.appendChild(r),this.root=d("div","root"),this.root.style.setProperty("--primary",e.primary),this.root.style.setProperty("--primary-foreground",e.primaryForeground),this.systemTheme=window.matchMedia("(prefers-color-scheme: dark)"),this.systemTheme.addEventListener("change",()=>this.setTheme(this.theme)),this.setTheme(t),this.panel=d("div","panel"),this.panel.hidden=!0,this.panel.setAttribute("role","dialog"),this.panel.setAttribute("aria-label","Feedback"),this.state=d("div","state"),this.stateClose=d("button","state-close"),this.stateClose.type="button",this.stateClose.setAttribute("aria-label","Close feedback"),this.stateClose.textContent="\xD7",this.stateClose.addEventListener("click",()=>this.closePanel()),this.spinner=d("div","spinner"),this.stateText=document.createElement("p"),this.retryButton=d("button","retry"),this.retryButton.type="button",this.retryButton.textContent="Try again",this.retryButton.hidden=!0,this.retryButton.addEventListener("click",()=>this.retryHandler?.()),this.state.append(this.stateClose,this.spinner,this.stateText,this.retryButton),this.panel.appendChild(this.state),this.launcher=d("button","launcher"),this.launcher.type="button",this.launcher.setAttribute("aria-label","Feedback"),this.launcher.setAttribute("aria-expanded","false"),this.launcher.title="Drag to move. Use arrow keys when focused.",this.launcher.setAttribute("aria-description","Drag to move, or use arrow keys. Enter opens feedback."),this.launcher.addEventListener("pointerdown",s=>this.startDrag(s)),this.launcher.addEventListener("pointermove",s=>this.moveDrag(s)),this.launcher.addEventListener("pointerup",s=>{s.pointerId===this.drag?.pointerId&&this.endDrag(!1)}),this.launcher.addEventListener("pointercancel",s=>{s.pointerId===this.drag?.pointerId&&this.endDrag(!0)}),this.launcher.addEventListener("lostpointercapture",s=>{s.pointerId===this.drag?.pointerId&&this.endDrag(!0)}),this.launcher.addEventListener("dragstart",s=>s.preventDefault()),this.launcher.addEventListener("contextmenu",s=>{this.drag&&s.preventDefault()}),this.launcher.addEventListener("keydown",s=>this.moveWithKeyboard(s)),this.launcher.innerHTML=ce;let a=d("span","tab-label");a.textContent="Help",this.launcher.appendChild(a),this.badge=d("span","badge"),this.badge.hidden=!0,this.badge.setAttribute("aria-live","polite"),this.launcher.appendChild(this.badge),this.launcherClose=d("button","launcher-close"),this.launcherClose.type="button",this.launcherClose.hidden=!0;let o=d("span","");o.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>',o.setAttribute("aria-hidden","true"),this.launcherClose.appendChild(o),this.launcherClose.addEventListener("click",()=>{let s=this.root.dataset.closeBehavior==="hide"?"hidden":"tab";this.launcherStateHandler?.(s),!this.launcher.hidden&&!this.root.hidden&&this.launcher.focus({preventScroll:!0})}),this.root.append(this.panel,this.launcher,this.launcherClose),i.appendChild(this.root)}mount(){document.body.appendChild(this.host);let e=()=>{this.endDrag(!0),this.cancelLauncherMotion(),this.layoutPosition()};window.addEventListener("resize",e),window.visualViewport?.addEventListener("resize",e),window.visualViewport?.addEventListener("scroll",e),window.addEventListener("blur",()=>this.endDrag(!0)),document.addEventListener("visibilitychange",()=>{document.visibilityState==="hidden"&&this.endDrag(!0)}),this.layoutPosition()}onLauncherClick(e){this.launcher.addEventListener("click",t=>{if(this.suppressClick&&t.detail!==0){t.preventDefault();return}e()})}onPositionChange(e){this.positionHandler=e}viewport(){let e=window.visualViewport,t=getComputedStyle(this.root),i=h=>Number.parseFloat(t.getPropertyValue(`--safe-${h}`))||0,r=e?.offsetLeft??0,a=r+Math.min(e?.width??1/0,document.documentElement.clientWidth),o=r+i("left")+20,s=(e?.offsetTop??0)+i("top")+12;return{left:o,top:s,edgeLeft:r,edgeRight:a,right:a-i("right")-20,bottom:(e?.offsetTop??0)+(e?.height??document.documentElement.clientHeight)-i("bottom")-12}}launcherSize(){return this.launcher.dataset.state!=="tab"?{width:56,height:56}:{width:22+(Number.parseFloat(getComputedStyle(this.root).getPropertyValue("--tab-safe-inset"))||0),height:56}}placeAt(e,t){let i=this.launcherSize();this.root.style.left=`${e-(this.root.dataset.alignment==="right"?56-i.width:0)}px`,this.root.style.top=`${t+i.height-56}px`,this.root.style.right="auto",this.root.style.bottom="auto"}layoutPosition(){if(this.root.dataset.alignment=this.docked?.alignment??this.placement.alignment,this.root.dataset.docked=String(!!this.docked),this.docked){let e=this.launcherSize(),t=this.viewport(),i=this.launcher.dataset.state==="tab",r=this.docked.alignment==="left"?i?t.edgeLeft:t.left:Math.max(t.edgeLeft,(i?t.edgeRight:t.right)-e.width),a=t.top+Math.max(0,t.bottom-t.top-e.height)*this.docked.y;this.placeAt(r,a)}else{for(let e of["left","right","top","bottom"])this.root.style.removeProperty(e);if(this.launcher.dataset.state==="tab"&&this.host.isConnected){let e=this.launcherSize(),t=this.viewport(),i=this.root.getBoundingClientRect().bottom,r=this.placement.alignment==="left"?t.edgeLeft:t.edgeRight-e.width;this.placeAt(r,c(i-e.height,t.top,t.bottom-e.height))}}this.layoutPanel()}layoutPanel(){if(!this.host.isConnected)return;let e=this.launcherSize(),t=this.viewport(),i=this.root.getBoundingClientRect();this.root.style.setProperty("--launcher-close-top",`${Math.max(-20,t.top-i.top)}px`);let r=this.docked?.alignment??this.placement.alignment,a=r==="left"?i.left:i.right-e.width,o=X({left:a,right:a+e.width,top:i.bottom-e.height,bottom:i.bottom},{...t,left:t.left-8,right:t.right+8},r);for(let s of["left","top","width","height"])this.root.style.setProperty(`--panel-${s}`,`${o[s]}px`)}startDrag(e){if(!e.isPrimary||e.button!==0||this.isOpen||this.root.hidden||this.drag)return;this.snapAnimation?.pause(),this.suppressClick=!1;let t=this.launcher.getBoundingClientRect();this.drag={pointerId:e.pointerId,x:e.clientX,y:e.clientY,left:t.left,top:t.top,moved:!1},this.launcher.setPointerCapture(e.pointerId)}moveDrag(e){let t=this.drag;if(!t||e.pointerId!==t.pointerId)return;let i=e.clientX-t.x,r=e.clientY-t.y;if(!t.moved&&Math.hypot(i,r)<8)return;e.preventDefault(),t.moved||(this.cancelLauncherMotion(),t.moved=!0,this.suppressClick=!0,this.root.dataset.dragging="true");let a=this.viewport(),o=this.launcherSize();this.placeAt(c(t.left+i,a.left,a.right-o.width),c(t.top+r,a.top,a.bottom-o.height))}endDrag(e){let t=this.drag;if(!t)return;let i=this.launcher.getBoundingClientRect();if(this.drag=null,delete this.root.dataset.dragging,this.launcher.hasPointerCapture(t.pointerId)&&this.launcher.releasePointerCapture(t.pointerId),!t.moved){this.snapAnimation?.play();return}if(e){this.layoutPosition(),this.animateLauncherFrom(i);return}let r=this.viewport();this.positionHandler?.({alignment:i.left+i.width/2<(r.left+r.right)/2?"left":"right",y:c((i.top-r.top)/Math.max(1,r.bottom-r.top-i.height),0,1)}),this.animateLauncherFrom(i)}cancelLauncherMotion(){this.snapAnimation?.cancel(),this.snapAnimation=null,delete this.root.dataset.snapping}animateLauncherFrom(e){if(this.cancelLauncherMotion(),!this.host.isConnected||this.root.hidden||this.launcher.hidden||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;let t=this.root.getBoundingClientRect(),i=this.root.dataset.alignment==="left"?e.left-t.left:e.right-t.right,r=e.bottom-t.bottom;if(Math.abs(i)<.5&&Math.abs(r)<.5)return;this.root.dataset.snapping="true";let a=this.launcher.animate([{transform:`translate(${i}px, ${r}px)`},{transform:"none"}],{duration:220,easing:"cubic-bezier(.22, 1, .36, 1)"});this.snapAnimation=a;let o=()=>{this.snapAnimation===a&&(this.snapAnimation=null,delete this.root.dataset.snapping)};a.onfinish=o,a.oncancel=o}moveWithKeyboard(e){if(e.key==="Escape"&&this.drag){e.preventDefault(),this.endDrag(!0);return}if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)||this.isOpen||this.root.hidden||e.altKey||e.ctrlKey||e.metaKey||this.drag)return;e.preventDefault();let t=this.launcher.getBoundingClientRect(),i=this.viewport(),r=e.key==="ArrowLeft"?"left":e.key==="ArrowRight"?"right":this.root.dataset.alignment,a=t.top+(e.key==="ArrowUp"?-24:e.key==="ArrowDown"?24:0);this.positionHandler?.({alignment:r,y:c((a-i.top)/Math.max(1,i.bottom-i.top-t.height),0,1)}),this.animateLauncherFrom(t)}onLauncherStateChange(e){this.launcherStateHandler=e}get isOpen(){return!this.panel.hidden}openPanel(){this.endDrag(!0),this.layoutPanel(),!this.isOpen&&document.activeElement instanceof HTMLElement&&document.activeElement!==this.host&&(this.returnFocus=document.activeElement),this.panel.hidden=!1,this.root.dataset.panelOpen="true",this.launcher.setAttribute("aria-expanded","true"),this.focusPanel()}focusPanel(){this.root.hidden||!this.isOpen||(this.state.hidden?this.iframe?.focus({preventScroll:!0}):this.stateClose.focus({preventScroll:!0}))}closePanel(e=!0){let t=this.isOpen;this.panel.hidden=!0,this.root.dataset.panelOpen="false",this.launcher.setAttribute("aria-expanded","false"),e&&t&&!this.root.hidden&&(this.launcher.hidden?this.returnFocus?.isConnected&&this.returnFocus.focus({preventScroll:!0}):this.launcher.focus({preventScroll:!0}))}setPlacement(e,t,i=null){this.root.style.setProperty("--z-index",String(t)),!(e.alignment===this.placement.alignment&&e.sideOffset===this.placement.sideOffset&&e.bottomOffset===this.placement.bottomOffset&&i?.alignment===this.docked?.alignment&&i?.y===this.docked?.y)&&(this.endDrag(!0),this.cancelLauncherMotion(),this.placement=e,this.docked=i,this.root.style.setProperty("--side-offset",`${e.sideOffset}px`),this.root.style.setProperty("--bottom-offset",`${e.bottomOffset}px`),this.layoutPosition())}currentPlacement(){if(!this.docked)return{...this.placement};let e=this.viewport();return{alignment:this.docked.alignment,sideOffset:20,bottomOffset:Math.round(12+Math.max(0,e.bottom-e.top-56)*(1-this.docked.y))}}setTheme(e){this.theme=e,this.root.dataset.theme=e==="auto"?this.systemTheme.matches?"dark":"light":e}setLauncher(e,t){let i=this.launcher.dataset.state,a=i!==e&&i!==void 0&&i!=="hidden"&&e!=="hidden"&&this.host.isConnected&&!this.root.hidden&&!this.launcher.hidden?this.launcher.getBoundingClientRect():null;this.root.dataset.launcherState=e,this.launcher.dataset.state=e,this.root.dataset.closeBehavior=t,this.launcher.hidden=e==="hidden",this.launcher.setAttribute("aria-label",e==="tab"?"Help":"Feedback"),this.launcherClose.hidden=this.launcher.hidden||e!=="button"||t==="none";let o=t==="hide"?"Hide for now":"Minimize button";this.launcherClose.setAttribute("aria-label",o),this.launcherClose.title=o,this.layoutPosition(),a?this.animateLauncherFrom(a):this.launcher.hidden&&this.cancelLauncherMotion()}setHidden(e){if(e&&(this.endDrag(!0),this.cancelLauncherMotion()),e&&document.activeElement===this.host){let t=this.host.shadowRoot?.activeElement;t instanceof HTMLElement&&t.blur()}this.root.hidden=e}setBadge(e){if(e<=0){this.badge.hidden=!0;return}this.badge.textContent=e>9?"9+":String(e),this.badge.hidden=!1}showLoading(){this.retryHandler=null,this.spinner.hidden=!1,this.stateText.textContent="",this.retryButton.hidden=!0,this.state.hidden=!1,this.iframe&&(this.iframe.hidden=!0)}showError(e,t){this.retryHandler=t,this.spinner.hidden=!0,this.stateText.textContent=e,this.retryButton.hidden=!1,this.state.hidden=!1,this.iframe&&(this.iframe.hidden=!0)}showContent(){let e=this.host.shadowRoot?.activeElement,t=this.isOpen&&!this.root.hidden&&!!e&&this.state.contains(e);this.retryHandler=null,this.state.hidden=!0,this.iframe&&(this.iframe.hidden=!1),t&&this.iframe?.focus({preventScroll:!0})}setIframe(e){this.removeIframe();let t=document.createElement("iframe");t.title="Feedback",t.hidden=!0,t.setAttribute("allow","clipboard-write"),t.src=e,this.panel.appendChild(t),this.iframe=t}removeIframe(){this.iframe?.remove(),this.iframe=null}get frameWindow(){return this.iframe?.contentWindow??null}get hasIframe(){return this.iframe!==null}};function d(n,e){let t=document.createElement(n);return t.className=e,t}var pe=6e4,S=class{constructor(e,t,i,r,a){this.baseUrl=e;this.auth=i;this.onCount=r;this.hasHostAuth=a;this.live=!1;this.pending=null;this.key=`feedlog:widget:unread:${t}`}takeOver(){this.live=!0}releaseOwnership(){this.live=!1}push(e){let t=Number.isFinite(e)&&e>0?Math.floor(e):0;this.write(t),this.onCount(t)}start(){let e=this.read();e&&this.onCount(e.count),this.refresh(),document.addEventListener("visibilitychange",()=>{document.visibilityState==="visible"&&this.refresh()})}refresh(){if(this.live||!this.hasHostAuth)return Promise.resolve();let e=this.read();return e&&Date.now()-e.at<pe?Promise.resolve():(this.pending??(this.pending=this.load().finally(()=>{this.pending=null})),this.pending)}async load(){try{let e=await this.auth.resolve();if(!e){this.clear(),this.onCount(0);return}let t;try{t=await M(this.baseUrl,e.token)}catch(i){if(!(i instanceof g))throw i;let r=await this.auth.resolve({ignoreCache:!0});if(!r){this.clear(),this.onCount(0);return}t=await M(this.baseUrl,r.token)}this.write(t),this.onCount(t)}catch{}}read(){let e=l().get(this.key);if(!e)return null;try{let t=JSON.parse(e);return typeof t?.count!="number"||typeof t.at!="number"?null:{count:t.count,at:t.at}}catch{return null}}write(e){l().set(this.key,JSON.stringify({count:e,at:Date.now()}))}clear(){l().remove(this.key)}};var fe="Feedback could not be loaded.",me=3e3,ge=2500;async function G(n){let e;try{e=await F(n.baseUrl)}catch{e=null}return e?e.enabled?(await ve(),new O(n,new P(e.branding,n.theme),e.launcher,e.launcher.closeBehavior)):null:(console.warn("[feedlog/widget] could not load widget config; nothing was rendered"),null)}var O=class{constructor(e,t,i,r="collapse"){this.options=e;this.ui=t;this.defaults=i;this.frameToken=null;this.loginBlocking=!1;this.loginCompleted=!1;this.frameUpdate=Promise.resolve();this.canResume=!1;this.frameReady=!1;this.canUpdateTheme=!1;this.frameTheme="auto";this.stateSequence=0;this.stateRequest=null;this.onMessage=e=>{if(e.origin!==this.options.origin)return;let t=this.ui.frameWindow;if(!t||e.source!==t)return;let i=e.data;if(!i||typeof i!="object")return;let r=i;if(!(r.v!==1||typeof r.type!="string"))switch(r.type){case"ready":this.canResume=r.payload?.capabilities?.resumeState===!0,this.frameReady=!0,this.canUpdateTheme=r.payload?.capabilities?.theme===!0,t.postMessage({v:1,type:"init",payload:{capabilities:{pageContext:!0},...this.canResume&&this.resumeState!==void 0?{resumeState:this.resumeState}:{}}},this.options.origin),this.resumeState=void 0,this.applyTheme(),this.ui.showContent();return;case"resume-state":r.payload?.requestId===this.stateRequest?.id&&this.stateRequest?.resolve(r.payload?.state);return;case"auth-requested":this.handleAuthRequest(r.payload?.reason);return;case"unread":this.unread.push(Number(r.payload?.count));return;case"navigate":this.handleNavigate(r.payload);return;case"close-request":this.ui.closePanel();return;case"page-context-request":{let a=r.payload?.requestId;if(typeof a!="string"||a.length>100)return;let o=document.querySelector('meta[name="description"]')?.content;t.postMessage({v:1,type:"page-context",payload:{requestId:a,context:{pathname:window.location.pathname.slice(0,2e3),...document.title?{title:document.title.slice(0,500)}:{},...o?{description:o.slice(0,2e3)}:{}}}},this.options.origin);return}default:}};this.display=p({},e),this.preferenceKey=`feedlog:widget:launcher:${e.baseUrl}`,this.positionKey=`feedlog:widget:position:${e.baseUrl}`,this.position=J(l().get(this.positionKey)),this.loginResumeKey=`feedlog:widget:login-resume:${e.baseUrl}`,this.closeBehavior=y(r),this.preference=e.launcher?.state??H(l().get(this.preferenceKey),this.closeBehavior),this.persistPreference();let a=new L(e.origin),o=e.auth;this.auth=new k(e.baseUrl,e.origin,o?{getToken:()=>o.getToken(),login:o.login?()=>this.runLogin():void 0}:void 0,a),this.unread=new S(e.baseUrl,e.origin,this.auth,s=>{this.ui.setBadge(s);try{this.options.onUnreadChange?.(s)}catch{console.warn("[feedlog/widget] onUnreadChange callback failed")}},!!e.auth)}start(e){this.applyDisplay(),this.ui.mount(),this.ui.onLauncherClick(()=>{this.preference==="tab"&&this.changeLauncher("button"),this.toggle()}),this.ui.onLauncherStateChange(i=>this.changeLauncher(i)),this.ui.onPositionChange(i=>{this.position=i,l().set(this.positionKey,JSON.stringify(i)),this.applyDisplay()}),window.addEventListener("message",this.onMessage),this.unread.start();let t=V(this.options.origin);if(t)try{this.resumeState=JSON.parse(l().get(this.loginResumeKey)??"null")??void 0}catch{this.resumeState=void 0}l().remove(this.loginResumeKey),(e??t)&&this.open(),this.prewarm()}prewarm(){if(navigator.connection?.saveData)return;let e=()=>{this.ui.hasIframe||this.sync({})};typeof requestIdleCallback=="function"?requestIdleCallback(e,{timeout:me}):setTimeout(e,ge)}toggle(){if(this.ui.isOpen){this.ui.closePanel();return}this.open()}async open(){this.ui.openPanel(),this.ui.hasIframe||this.ui.showLoading(),await this.sync({})}close(){this.ui.closePanel(!1)}update(e){(e.launcher?.alignment!==void 0||e.launcher?.bottomOffset!==void 0||e.launcher?.sideOffset!==void 0)&&this.position&&(this.display=p(this.display,{launcher:this.ui.currentPlacement()}),this.position=null,l().remove(this.positionKey)),this.display=p(this.display,e),e.launcher?.state!==void 0&&(this.preference=e.launcher.state,this.persistPreference()),this.applyDisplay()}applyVisibility(){this.ui.setHidden(this.loginBlocking)}applyDisplay(){this.ui.setPlacement(v({...this.defaults,...this.display.launcher}),this.display.zIndex??40,this.position),this.ui.setLauncher(this.preference,this.closeBehavior),this.applyTheme(),this.applyVisibility()}applyTheme(){let e=this.display.theme??"auto";if(!this.ui.hasIframe){this.ui.setTheme(e);return}this.frameReady&&this.canUpdateTheme&&e!==this.frameTheme?(this.ui.frameWindow.postMessage({v:1,type:"set-theme",payload:{theme:e}},this.options.origin),this.frameTheme=e):this.frameReady&&!this.canUpdateTheme&&e!==this.frameTheme&&e!==this.warnedTheme&&(console.warn("[feedlog/widget] this embed page does not support live theme updates; keeping its current theme"),this.warnedTheme=e),this.ui.setTheme(this.frameTheme)}changeLauncher(e){D(e,this.closeBehavior)===e&&(this.preference=e,this.persistPreference(),this.applyDisplay())}persistPreference(){this.preference==="hidden"?l().remove(this.preferenceKey):l().set(this.preferenceKey,this.preference)}async runLogin(){let e=this.options.auth;try{let t=await this.captureState();t!==void 0&&(this.resumeState=t,l().set(this.loginResumeKey,JSON.stringify(t)));let i=e.login();if(!i||typeof i.then!="function")return;this.loginBlocking=!0,this.applyVisibility();try{await i}finally{this.loginCompleted=!0}}finally{l().remove(this.loginResumeKey)}}async sync(e,t){try{let i=await this.auth.resolve(e);i&&t&&i.token===t&&(i=await this.auth.resolve({...e,ignoreCache:!0}));let r=i?.token??null;this.frameUpdate=this.frameUpdate.then(async()=>{(!this.ui.hasIframe||r!==this.frameToken)&&await this.mountFrame(r)}),await this.frameUpdate}catch{this.ui.hasIframe||this.ui.showError(fe,()=>this.retry())}finally{this.loginCompleted&&(this.loginCompleted=!1,this.loginBlocking=!1,this.applyVisibility(),this.ui.focusPanel())}}retry(){this.ui.showLoading(),this.sync({})}async mountFrame(e){this.resumeState=await this.captureState()??this.resumeState,this.frameToken=e,this.canResume=!1,this.frameReady=!1,this.canUpdateTheme=!1,this.warnedTheme=void 0,this.frameTheme=this.display.theme??"auto",this.ui.setTheme(this.frameTheme),this.ui.showLoading(),this.unread.takeOver(),e||this.unread.push(0);let t=new URL(this.options.embedPath,this.options.baseUrl);t.searchParams.set("theme",this.frameTheme),t.searchParams.set("origin",window.location.origin);let i=e?`${t.toString()}#token=${encodeURIComponent(e)}`:t.toString();this.ui.setIframe(i)}captureState(){return!this.canResume||!this.ui.frameWindow?Promise.resolve(void 0):new Promise(e=>{let t=String(++this.stateSequence),i=setTimeout(()=>{this.stateRequest?.id===t&&(this.stateRequest=null),e(void 0)},750);this.stateRequest={id:t,resolve:r=>{clearTimeout(i),this.stateRequest=null,e(r)}},this.ui.frameWindow.postMessage({v:1,type:"resume-state-request",payload:{requestId:t}},this.options.origin)})}handleAuthRequest(e){return this.sync({allowLogin:e==="user",ignoreCache:e==="expired"},this.frameToken)}async handleNavigate(e){let t=e?.slug;if(e?.to!=="feedback"||typeof t!="string"||!t)return;let i=`/p/${encodeURIComponent(t)}`,r=new URL(i,this.options.baseUrl).toString();try{let a=await this.auth.getCustomerJwt();if(a){let o=new URL("/api/sso/jwt",this.options.baseUrl);o.searchParams.set("jwt",a),o.searchParams.set("return_to",i),r=o.toString()}}catch{}window.open(r,"_blank","noopener")}};function ve(){return document.body?Promise.resolve():new Promise(n=>{document.addEventListener("DOMContentLoaded",()=>n(),{once:!0})})}var Z=!1,f=null,I,R={};function ye(n){if(typeof window>"u"||typeof document>"u")return;if(Z){console.warn("[feedlog/widget] createWidget() was already called; ignoring this call");return}if(!n?.baseUrl||typeof n.baseUrl!="string")throw new TypeError("[feedlog/widget] createWidget requires a baseUrl");if(n.auth!==void 0&&typeof n.auth?.getToken!="function")throw new TypeError("[feedlog/widget] auth.getToken must be a function");E(n);let e=n.baseUrl.replace(/\/+$/,""),t;try{t=new URL(e).origin}catch{throw new TypeError(`[feedlog/widget] baseUrl is not a valid URL: ${n.baseUrl}`)}let i=n.embedPath??"/widget/embed",r=typeof i=="string"&&i.startsWith("/")&&!i.startsWith("//")?i:"/widget/embed";Z=!0,G({...n,baseUrl:e,origin:t,auth:n.auth,theme:n.theme??"auto",embedPath:r}).then(a=>{a&&(f=a,f.update(R),f.start(I))})}function be(){typeof window>"u"||(I=!0,f?.open())}function we(){typeof window>"u"||(I=!1,f?.close())}function xe(n){typeof window>"u"||(E(n),R=p(R,n),f?.update(n))}return re(ke);})();
 /* FEEDLOG_SDK_END */
 </script>
 
@@ -882,12 +1056,42 @@ iframe[hidden] { display: none; }
   secretInput.value = state.secret
   themeSel.value = state.theme
   hostAuthSel.value = state.hostAuth === 'off' ? 'off' : 'on'
+  delete state.closeStyle
+  delete state.tabStyle
+  $('p-show-launcher').onclick = function () {
+    if (!window.FeedLogWidget) return
+    window.FeedLogWidget.closeWidget()
+    window.FeedLogWidget.updateWidget({ launcher: { state: 'button' } })
+  }
+  $('p-show-tab').onclick = showTab
+  $('p-tab-left').onclick = function () { dockTab('ArrowLeft') }
+  $('p-tab-right').onclick = function () { dockTab('ArrowRight') }
+  function showTab() {
+    if (!window.FeedLogWidget) return
+    window.FeedLogWidget.closeWidget()
+    window.FeedLogWidget.updateWidget({ launcher: { state: 'tab' } })
+  }
+  function dockTab(key) {
+    showTab()
+    var host = document.getElementById('feedlog-widget')
+    var launcher = host && host.shadowRoot && host.shadowRoot.querySelector('.launcher')
+    if (launcher) launcher.dispatchEvent(new KeyboardEvent('keydown', { key: key, bubbles: true, cancelable: true }))
+  }
+  $('host-open-widget').onclick = function () {
+    $('host-help').open = false
+    window.FeedLogWidget.openWidget()
+  }
+  $('host-restore-launcher').onclick = function () {
+    $('host-help').open = false
+    window.FeedLogWidget.updateWidget({ launcher: { state: 'button' } })
+  }
   baseInput.addEventListener('input', function () { state.baseUrl = baseInput.value.trim(); save(); refreshStatus() })
   embedInput.addEventListener('input', function () { state.embedPath = embedInput.value.trim() || '/widget/embed'; save() })
   secretInput.addEventListener('input', function () { state.secret = secretInput.value.trim(); save(); refreshStatus() })
   themeSel.addEventListener('change', function () {
     state.theme = themeSel.value; save(); applyTheme(); refreshStatus()
-    log('theme → ' + state.theme + ' (reload to apply to the widget)')
+    window.FeedLogWidget.updateWidget({ theme: state.theme })
+    log('theme → ' + state.theme)
   })
   hostAuthSel.addEventListener('change', function () {
     state.hostAuth = hostAuthSel.value; save(); refreshStatus()

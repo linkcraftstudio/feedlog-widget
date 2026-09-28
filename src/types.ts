@@ -6,16 +6,35 @@ export interface WidgetAuth {
    */
   getToken: () => Promise<string | null>
   /**
-   * Opens the host's own sign-in UI (popup or full-page redirect). Settling
-   * only means the interaction ended; success is judged by the next
-   * `getToken()`.
+   * A Promise settles when the host UI exits, including cancellation.
+   * Void callbacks keep the widget visible for compatibility.
+   * Success is judged by the next getToken(), so cancellation also completes.
    */
   login?: () => void | Promise<void>
 }
 
 export type WidgetTheme = 'light' | 'dark' | 'auto'
+export type LauncherState = 'button' | 'tab' | 'hidden'
+export type LauncherCloseBehavior = 'none' | 'collapse' | 'hide'
 
-export interface WidgetOptions {
+export interface LauncherPlacement {
+  alignment: 'left' | 'right'
+  bottomOffset: number
+  sideOffset: number
+}
+
+export interface LauncherOptions extends Partial<LauncherPlacement> {
+  state?: LauncherState
+}
+
+export interface WidgetDisplayOptions {
+  /** Explicit fields override dashboard defaults on desktop and mobile. */
+  launcher?: LauncherOptions
+  zIndex?: number
+  theme?: WidgetTheme
+}
+
+export interface WidgetOptions extends WidgetDisplayOptions {
   /** FeedLog org address, e.g. `https://acme.feedlog.ai`. */
   baseUrl: string
   /**
@@ -25,14 +44,14 @@ export interface WidgetOptions {
    * Products with no user system of their own can integrate with baseUrl alone.
    */
   auth?: WidgetAuth
-  /** Passed to the embed page as a query param so the first paint is not mis-themed. */
-  theme?: WidgetTheme
   /**
    * Path of the hosted embed page the widget loads in its iframe. Defaults to
    * `/widget/embed`. Advanced/debug escape hatch — point it at a preview or
    * demo build without changing `baseUrl`. Must be a same-origin absolute path.
    */
   embedPath?: string
+  /** Allows a custom host help entry to display unread messages. */
+  onUnreadChange?: (count: number) => void
 }
 
 export interface WidgetConfig {
@@ -42,6 +61,7 @@ export interface WidgetConfig {
     primary: string
     primaryForeground: string
   }
+  launcher: LauncherPlacement & { closeBehavior: LauncherCloseBehavior }
 }
 
 export interface ExchangeResponse {
@@ -66,9 +86,10 @@ export type AuthReason = 'user' | 'expired'
 
 /** Requests and events from the trusted FeedLog frame. */
 export type InboundMessage =
-  | { v: 1, type: 'ready' }
+  | { v: 1, type: 'ready', payload?: { capabilities?: { resumeState?: boolean, theme?: boolean } } }
   | { v: 1, type: 'auth-requested', payload?: { reason?: AuthReason } }
   | { v: 1, type: 'unread', payload?: { count?: number } }
   | { v: 1, type: 'navigate', payload?: { to?: string, slug?: string } }
   | { v: 1, type: 'close-request' }
   | { v: 1, type: 'page-context-request', payload?: { requestId?: string } }
+  | { v: 1, type: 'resume-state', payload?: { requestId?: string, state?: unknown } }

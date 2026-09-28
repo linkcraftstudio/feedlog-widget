@@ -1,15 +1,14 @@
-import type { WidgetOptions } from './types'
-import { boot } from './widget'
+import type { WidgetDisplayOptions, WidgetOptions } from './types'
+import { boot, type Widget } from './widget'
+import { mergeDisplay, validateDisplay } from './display'
 
-export type { WidgetAuth, WidgetOptions, WidgetTheme } from './types'
+export type { LauncherOptions, LauncherPlacement, LauncherState, WidgetAuth, WidgetDisplayOptions, WidgetOptions, WidgetTheme } from './types'
 
 let created = false
+let widget: Widget | null = null
+let pendingOpen: boolean | undefined
+let pendingDisplay: WidgetDisplayOptions = {}
 
-/**
- * Mounts the FeedLog feedback widget. This is the entire public surface: there
- * is no return value, no instance and no events — the widget manages its own
- * visibility (launcher opens it, the panel's own close button closes it).
- */
 export function createWidget(options: WidgetOptions): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
 
@@ -28,6 +27,7 @@ export function createWidget(options: WidgetOptions): void {
   if (options.auth !== undefined && typeof options.auth?.getToken !== 'function') {
     throw new TypeError('[feedlog/widget] auth.getToken must be a function')
   }
+  validateDisplay(options)
 
   const baseUrl = options.baseUrl.replace(/\/+$/, '')
   let origin: string
@@ -47,10 +47,35 @@ export function createWidget(options: WidgetOptions): void {
 
   created = true
   void boot({
+    ...options,
     baseUrl,
     origin,
     auth: options.auth,
     theme: options.theme ?? 'auto',
     embedPath,
+  }).then((instance) => {
+    if (!instance) return
+    widget = instance
+    widget.update(pendingDisplay)
+    widget.start(pendingOpen)
   })
+}
+
+export function openWidget(): void {
+  if (typeof window === 'undefined') return
+  pendingOpen = true
+  void widget?.open()
+}
+
+export function closeWidget(): void {
+  if (typeof window === 'undefined') return
+  pendingOpen = false
+  widget?.close()
+}
+
+export function updateWidget(options: WidgetDisplayOptions): void {
+  if (typeof window === 'undefined') return
+  validateDisplay(options)
+  pendingDisplay = mergeDisplay(pendingDisplay, options)
+  widget?.update(options)
 }

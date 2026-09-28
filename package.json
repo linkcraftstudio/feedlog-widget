@@ -1,7 +1,7 @@
 {
   "name": "@feedlog/widget",
   "version": "0.0.6",
-  "description": "Embeddable feedback widget for FeedLog. One function, zero runtime dependencies.",
+  "description": "Embeddable feedback widget for FeedLog with zero runtime dependencies.",
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
@@ -43,6 +43,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
     "size": "node scripts/size.mjs",
     "build:demo": "node scripts/build-demo.mjs",
     "demo": "node scripts/build-demo.mjs && node scripts/serve-demo.mjs",
@@ -51,6 +52,7 @@
   },
   "devDependencies": {
     "tsup": "^8.5.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
 }
