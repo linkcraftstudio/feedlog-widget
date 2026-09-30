@@ -41,6 +41,13 @@ const STYLES = `
   --tab-safe-inset: var(--safe-left);
   --tab-content-start: var(--safe-left);
 }
+.root[data-docked="true"] { right: calc(20px + var(--safe-right)); }
+.root[data-docked="true"][data-alignment="left"] { left: calc(20px + var(--safe-left)); right: auto; }
+.root[data-launcher-state="tab"] {
+  right: 0;
+  bottom: clamp(calc(12px + var(--safe-bottom)), calc(var(--bottom-offset) + var(--safe-bottom)), calc(100% - 76px - var(--safe-top)));
+}
+.root[data-launcher-state="tab"][data-alignment="left"] { left: 0; right: auto; }
 .root[data-theme="dark"] {
   color-scheme: dark;
   --surface: #16181d;
@@ -68,7 +75,7 @@ const STYLES = `
   background: var(--primary);
   color: var(--primary-foreground);
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, .22);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .16);
   transition: width var(--launcher-duration) var(--launcher-ease),
     padding var(--launcher-duration) var(--launcher-ease),
     border-radius var(--launcher-duration) var(--launcher-ease),
@@ -332,6 +339,7 @@ export class WidgetUi {
   private positionHandler: ((position: DockedPosition) => void) | null = null
   private placement: LauncherPlacement = { alignment: 'right', sideOffset: 20, bottomOffset: 20 }
   private docked: DockedPosition | null = null
+  private dockedAnchor: { edge: 'top' | 'bottom', offset: number } | null = null
   private drag: { pointerId: number, x: number, y: number, left: number, top: number, moved: boolean } | null = null
   private suppressClick = false
   private snapAnimation: Animation | null = null
@@ -424,14 +432,35 @@ export class WidgetUi {
 
   mount(): void {
     document.body.appendChild(this.host)
+    let width = document.documentElement.clientWidth
+    let height = window.innerHeight
+    let panelFrame = 0
+    const touchViewport = window.matchMedia('(pointer: coarse)')
+    const refreshPanel = (): void => {
+      if (!this.isOpen || panelFrame) return
+      panelFrame = requestAnimationFrame(() => {
+        panelFrame = 0
+        if (this.isOpen) this.layoutPanel()
+      })
+    }
     const resize = (): void => {
-      this.endDrag(true)
-      this.cancelLauncherMotion()
-      this.layoutPosition()
+      const nextWidth = document.documentElement.clientWidth
+      const nextHeight = window.innerHeight
+      // Mobile toolbar and keyboard height changes must not re-anchor a resting launcher.
+      const reposition = nextWidth !== width || (!touchViewport.matches && nextHeight !== height)
+      width = nextWidth
+      height = nextHeight
+      if (reposition) {
+        this.endDrag(true)
+        this.cancelLauncherMotion()
+        this.dockedAnchor = null
+        this.layoutPosition()
+      }
+      else refreshPanel()
     }
     window.addEventListener('resize', resize)
-    window.visualViewport?.addEventListener('resize', resize)
-    window.visualViewport?.addEventListener('scroll', resize)
+    window.visualViewport?.addEventListener('resize', refreshPanel)
+    window.visualViewport?.addEventListener('scroll', refreshPanel)
     window.addEventListener('blur', () => this.endDrag(true))
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') this.endDrag(true)
@@ -483,24 +512,24 @@ export class WidgetUi {
   private layoutPosition(): void {
     this.root.dataset.alignment = this.docked?.alignment ?? this.placement.alignment
     this.root.dataset.docked = String(!!this.docked)
-    if (!this.docked) {
-      for (const property of ['left', 'right', 'top', 'bottom']) this.root.style.removeProperty(property)
-      if (this.launcher.dataset.state === 'tab' && this.host.isConnected) {
-        const size = this.launcherSize(), view = this.viewport()
-        const bottom = this.root.getBoundingClientRect().bottom
-        const left = this.placement.alignment === 'left' ? view.edgeLeft : view.edgeRight - size.width
-        this.placeAt(left, clamp(bottom - size.height, view.top, view.bottom - size.height))
+    for (const property of ['left', 'right', 'top', 'bottom']) this.root.style.removeProperty(property)
+    if (this.docked && this.host.isConnected) {
+      if (!this.dockedAnchor) {
+        const view = this.viewport()
+        const top = view.top + Math.max(0, view.bottom - view.top - 56) * this.docked.y
+        const edge = this.docked.y < 0.5 ? 'top' : 'bottom'
+        const opposite = edge === 'top' ? 'bottom' : 'top'
+        // Measure the native fixed edge once; its coordinates can differ from the visual viewport.
+        this.root.style[edge] = `var(--safe-${edge})`
+        this.root.style[opposite] = 'auto'
+        const reference = this.root.getBoundingClientRect()
+        this.dockedAnchor = { edge, offset: Math.max(12, edge === 'top' ? top - reference.top : reference.bottom - top - 56) }
       }
-    }
-    else {
-      const size = this.launcherSize()
-      const view = this.viewport()
-      const tab = this.launcher.dataset.state === 'tab'
-      const left = this.docked.alignment === 'left'
-        ? (tab ? view.edgeLeft : view.left)
-        : Math.max(view.edgeLeft, (tab ? view.edgeRight : view.right) - size.width)
-      const top = view.top + Math.max(0, view.bottom - view.top - size.height) * this.docked.y
-      this.placeAt(left, top)
+      const { edge, offset } = this.dockedAnchor
+      const opposite = edge === 'top' ? 'bottom' : 'top'
+      // Native fixed positioning follows browser chrome without scroll-event corrections.
+      this.root.style[edge] = `min(calc(${offset}px + var(--safe-${edge})), calc(100% - 68px - var(--safe-${opposite})))`
+      this.root.style[opposite] = 'auto'
     }
     this.layoutPanel()
   }
@@ -511,6 +540,7 @@ export class WidgetUi {
     const view = this.viewport()
     const root = this.root.getBoundingClientRect()
     this.root.style.setProperty('--launcher-close-top', `${Math.max(-20, view.top - root.top)}px`)
+    if (!this.isOpen) return
     const alignment = this.docked?.alignment ?? this.placement.alignment
     // The host help entry can open feedback with the launcher itself hidden.
     const left = alignment === 'left' ? root.left : root.right - size.width
@@ -622,11 +652,11 @@ export class WidgetUi {
 
   openPanel(): void {
     this.endDrag(true)
-    this.layoutPanel()
     if (!this.isOpen && document.activeElement instanceof HTMLElement && document.activeElement !== this.host) {
       this.returnFocus = document.activeElement
     }
     this.panel.hidden = false
+    this.layoutPanel()
     this.root.dataset.panelOpen = 'true'
     this.launcher.setAttribute('aria-expanded', 'true')
     this.focusPanel()
@@ -658,6 +688,7 @@ export class WidgetUi {
     this.cancelLauncherMotion()
     this.placement = value
     this.docked = position
+    this.dockedAnchor = null
     this.root.style.setProperty('--side-offset', `${value.sideOffset}px`)
     this.root.style.setProperty('--bottom-offset', `${value.bottomOffset}px`)
     this.layoutPosition()
@@ -666,10 +697,11 @@ export class WidgetUi {
   currentPlacement(): LauncherPlacement {
     if (!this.docked) return { ...this.placement }
     const view = this.viewport()
+    const rect = this.root.getBoundingClientRect()
     return {
       alignment: this.docked.alignment,
       sideOffset: 20,
-      bottomOffset: Math.round(12 + Math.max(0, view.bottom - view.top - 56) * (1 - this.docked.y)),
+      bottomOffset: Math.round(Math.max(0, view.bottom + 12 - rect.bottom)),
     }
   }
 

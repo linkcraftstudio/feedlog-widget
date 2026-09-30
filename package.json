@@ -1,6 +1,6 @@
 {
   "name": "@feedlog/widget",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embeddable feedback widget for FeedLog with zero runtime dependencies.",
   "type": "module",
   "sideEffects": false,

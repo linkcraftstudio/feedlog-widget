@@ -120,6 +120,8 @@ Visitors can drag the button or Help tab with a mouse, pen or touch. Moving more
 
 The button keeps a 20px edge margin plus the safe area after dragging. The outlined Help tab sits flush against the viewport edge, regardless of side offset. Its visible size is 22 × 56px with at least a 44px hit target. Shapes transition over 220ms, respecting reduced-motion preferences. Clicking the tab restores the button and opens feedback.
 
+After dragging, the launcher uses a fixed distance from the nearer top or bottom edge. Collapsing and restoring preserve that vertical anchor. Mobile browser toolbar and keyboard height changes do not recalculate the saved drag ratio; rotating the device or resizing a desktop window restores its relative placement. The feedback panel still adapts to the visible viewport separately.
+
 Dashboard closing behavior is `none`, `collapse` (default) or `hide`. The button's close control is visible on desktop hover/focus and always visible on touch devices. It is absent when closure is disabled, the panel is open, or the launcher is collapsed or being dragged. There are no launcher controls inside the feedback panel.
 
 Button/tab state and dragged position use `sessionStorage`, scoped to the host and FeedLog URL. They survive reloads in the same tab. Hidden state lasts only for the current page and clears any saved tab state. A host that initializes with `state: 'hidden'` explicitly hides the launcher again on every load. Storage-restricted browsers retain preferences only in memory. Dashboard `none` resets old visitor collapse preferences on the next load, but an explicitly supplied SDK state still applies.
