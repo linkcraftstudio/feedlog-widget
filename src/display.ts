@@ -6,6 +6,7 @@ export const DEFAULT_WIDGET_Z_INDEX = 40
 export function mergeDisplay(current: WidgetDisplayOptions, update: WidgetDisplayOptions): WidgetDisplayOptions {
   return {
     theme: update.theme ?? current.theme,
+    locale: update.locale ?? current.locale,
     zIndex: update.zIndex ?? current.zIndex,
     launcher: {
       ...current.launcher,
@@ -29,6 +30,13 @@ function offset(value: unknown): number {
 }
 
 export function validateDisplay(options: WidgetDisplayOptions): void {
+  if (options.locale !== undefined) {
+    if (typeof options.locale !== 'string' || !options.locale) throw new TypeError('[feedlog/widget] locale must be auto or a language tag')
+    if (options.locale !== 'auto') {
+      try { Intl.getCanonicalLocales(options.locale) }
+      catch { throw new TypeError('[feedlog/widget] locale must be auto or a language tag') }
+    }
+  }
   const launcher = options.launcher
   if (launcher?.alignment !== undefined && launcher.alignment !== 'left' && launcher.alignment !== 'right') {
     throw new TypeError('[feedlog/widget] launcher.alignment must be left or right')

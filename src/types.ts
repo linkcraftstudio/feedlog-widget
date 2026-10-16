@@ -32,6 +32,8 @@ export interface WidgetDisplayOptions {
   launcher?: LauncherOptions
   zIndex?: number
   theme?: WidgetTheme
+  /** UI language tag, or auto (default). Currently resolves to English or Chinese. */
+  locale?: string
 }
 
 export interface WidgetOptions extends WidgetDisplayOptions {
@@ -86,7 +88,7 @@ export type AuthReason = 'user' | 'expired'
 
 /** Requests and events from the trusted FeedLog frame. */
 export type InboundMessage =
-  | { v: 1, type: 'ready', payload?: { capabilities?: { resumeState?: boolean, theme?: boolean } } }
+  | { v: 1, type: 'ready', payload?: { capabilities?: { resumeState?: boolean, theme?: boolean, locale?: boolean } } }
   | { v: 1, type: 'auth-requested', payload?: { reason?: AuthReason } }
   | { v: 1, type: 'unread', payload?: { count?: number } }
   | { v: 1, type: 'navigate', payload?: { to?: string, slug?: string } }

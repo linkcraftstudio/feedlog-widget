@@ -24,7 +24,7 @@ test('offsets reject invalid host input and use defaults for invalid bootstrap d
 test('partial display updates preserve omitted nested fields and explicit zero values', () => {
   const current: WidgetDisplayOptions = { theme: 'dark', zIndex: 60, launcher: { alignment: 'left', bottomOffset: 80, state: 'tab' } }
   const updated = mergeDisplay(current, { theme: undefined, zIndex: 0, launcher: { bottomOffset: 0, alignment: undefined } })
-  assert.deepEqual(updated, { theme: 'dark', zIndex: 0, launcher: { alignment: 'left', bottomOffset: 0, state: 'tab' } })
+  assert.deepEqual(updated, { theme: 'dark', locale: undefined, zIndex: 0, launcher: { alignment: 'left', bottomOffset: 0, state: 'tab' } })
   assert.equal(current.launcher?.bottomOffset, 80)
 })
 

@@ -1,4 +1,5 @@
 import type { LauncherCloseBehavior, LauncherPlacement, LauncherState, WidgetTheme } from './types'
+import { messages, type WidgetLanguage } from './locale'
 import { clamp, panelPlacement, type DockedPosition } from './position'
 import { DEFAULT_WIDGET_Z_INDEX } from './display'
 
@@ -326,6 +327,8 @@ export class WidgetUi {
   private readonly root: HTMLDivElement
   private readonly launcher: HTMLButtonElement
   private readonly launcherClose: HTMLButtonElement
+  private readonly tabLabel: HTMLSpanElement
+  private language: WidgetLanguage = 'en'
   private readonly badge: HTMLSpanElement
   private readonly panel: HTMLDivElement
   private readonly state: HTMLDivElement
@@ -366,19 +369,16 @@ export class WidgetUi {
     this.panel = el('div', 'panel')
     this.panel.hidden = true
     this.panel.setAttribute('role', 'dialog')
-    this.panel.setAttribute('aria-label', 'Feedback')
 
     this.state = el('div', 'state')
     this.stateClose = el('button', 'state-close')
     this.stateClose.type = 'button'
-    this.stateClose.setAttribute('aria-label', 'Close feedback')
     this.stateClose.textContent = '×'
     this.stateClose.addEventListener('click', () => this.closePanel())
     this.spinner = el('div', 'spinner')
     this.stateText = document.createElement('p')
     this.retryButton = el('button', 'retry')
     this.retryButton.type = 'button'
-    this.retryButton.textContent = 'Try again'
     this.retryButton.hidden = true
     this.retryButton.addEventListener('click', () => this.retryHandler?.())
     this.state.append(this.stateClose, this.spinner, this.stateText, this.retryButton)
@@ -386,10 +386,7 @@ export class WidgetUi {
 
     this.launcher = el('button', 'launcher')
     this.launcher.type = 'button'
-    this.launcher.setAttribute('aria-label', 'Feedback')
     this.launcher.setAttribute('aria-expanded', 'false')
-    this.launcher.title = 'Drag to move. Use arrow keys when focused.'
-    this.launcher.setAttribute('aria-description', 'Drag to move, or use arrow keys. Enter opens feedback.')
     this.launcher.addEventListener('pointerdown', event => this.startDrag(event))
     this.launcher.addEventListener('pointermove', event => this.moveDrag(event))
     this.launcher.addEventListener('pointerup', event => {
@@ -405,9 +402,8 @@ export class WidgetUi {
     this.launcher.addEventListener('contextmenu', (event) => { if (this.drag) event.preventDefault() })
     this.launcher.addEventListener('keydown', event => this.moveWithKeyboard(event))
     this.launcher.innerHTML = ICON
-    const tabLabel = el('span', 'tab-label')
-    tabLabel.textContent = 'Help'
-    this.launcher.appendChild(tabLabel)
+    this.tabLabel = el('span', 'tab-label')
+    this.launcher.appendChild(this.tabLabel)
     this.badge = el('span', 'badge')
     this.badge.hidden = true
     this.badge.setAttribute('aria-live', 'polite')
@@ -428,6 +424,7 @@ export class WidgetUi {
 
     this.root.append(this.panel, this.launcher, this.launcherClose)
     shadow.appendChild(this.root)
+    this.setLocale('en')
   }
 
   mount(): void {
@@ -710,6 +707,24 @@ export class WidgetUi {
     this.root.dataset.theme = theme === 'auto' ? (this.systemTheme.matches ? 'dark' : 'light') : theme
   }
 
+  setLocale(language: WidgetLanguage): void {
+    this.language = language
+    const text = messages[language]
+    this.root.lang = language === 'zh' ? 'zh-CN' : 'en'
+    this.panel.setAttribute('aria-label', text.feedback)
+    this.stateClose.setAttribute('aria-label', text.close)
+    this.retryButton.textContent = text.retry
+    this.tabLabel.textContent = text.help
+    this.launcher.title = text.dragTitle
+    this.launcher.setAttribute('aria-description', text.dragDescription)
+    this.launcher.setAttribute('aria-label', this.launcher.dataset.state === 'tab' ? text.help : text.feedback)
+    const close = this.root.dataset.closeBehavior === 'hide' ? text.hide : text.minimize
+    this.launcherClose.setAttribute('aria-label', close)
+    this.launcherClose.title = close
+    if (this.retryHandler) this.stateText.textContent = text.loadError
+    if (this.iframe) this.iframe.title = text.feedback
+  }
+
   setLauncher(state: LauncherState, behavior: LauncherCloseBehavior): void {
     const previous = this.launcher.dataset.state
     const morph = previous !== state && previous !== undefined && previous !== 'hidden' && state !== 'hidden'
@@ -719,9 +734,9 @@ export class WidgetUi {
     this.launcher.dataset.state = state
     this.root.dataset.closeBehavior = behavior
     this.launcher.hidden = state === 'hidden'
-    this.launcher.setAttribute('aria-label', state === 'tab' ? 'Help' : 'Feedback')
+    this.launcher.setAttribute('aria-label', state === 'tab' ? messages[this.language].help : messages[this.language].feedback)
     this.launcherClose.hidden = this.launcher.hidden || state !== 'button' || behavior === 'none'
-    const closeLabel = behavior === 'hide' ? 'Hide for now' : 'Minimize button'
+    const closeLabel = behavior === 'hide' ? messages[this.language].hide : messages[this.language].minimize
     this.launcherClose.setAttribute('aria-label', closeLabel)
     this.launcherClose.title = closeLabel
     this.layoutPosition()
@@ -759,10 +774,10 @@ export class WidgetUi {
     if (this.iframe) this.iframe.hidden = true
   }
 
-  showError(message: string, onRetry: () => void): void {
+  showError(onRetry: () => void): void {
     this.retryHandler = onRetry
     this.spinner.hidden = true
-    this.stateText.textContent = message
+    this.stateText.textContent = messages[this.language].loadError
     this.retryButton.hidden = false
     this.state.hidden = false
     if (this.iframe) this.iframe.hidden = true
@@ -781,7 +796,7 @@ export class WidgetUi {
   setIframe(src: string): void {
     this.removeIframe()
     const frame = document.createElement('iframe')
-    frame.title = 'Feedback'
+    frame.title = messages[this.language].feedback
     frame.hidden = true
     frame.setAttribute('allow', 'clipboard-write')
     frame.src = src

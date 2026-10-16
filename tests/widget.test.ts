@@ -29,6 +29,9 @@ function harness(auth?: WidgetAuth, options: Partial<WidgetOptions> = {}, behavi
     hidden: false,
     state: 'button',
     theme: 'auto',
+    locale: 'en',
+    mounts: 0,
+    iframeSrc: '',
     zIndex: 0,
     restoredFocus: false,
     position: null as DockedPosition | null,
@@ -46,11 +49,12 @@ function harness(auth?: WidgetAuth, options: Partial<WidgetOptions> = {}, behavi
     setHidden(value: boolean) { this.hidden = value },
     setLauncher(state: string) { this.state = state },
     setTheme(theme: string) { this.theme = theme },
+    setLocale(locale: string) { this.locale = locale },
     setPlacement(value: unknown, zIndex: number, position: DockedPosition | null) { this.placement = value; this.position = position; this.zIndex = zIndex },
     currentPlacement() { return { alignment: this.position?.alignment ?? 'right', bottomOffset: 300, sideOffset: 20 } },
     showLoading() {},
     showContent() {},
-    setIframe() { this.hasIframe = true },
+    setIframe(src: string) { this.hasIframe = true; this.mounts++; this.iframeSrc = src },
   }
   const origin = `https://feedlog-${++sequence}.test`
   const widget = new Widget({ baseUrl: origin, origin, theme: 'auto', embedPath: '/widget/embed', auth, ...options }, ui as unknown as WidgetUi, { alignment: 'right', bottomOffset: 20, sideOffset: 20 }, behavior)
@@ -67,6 +71,55 @@ async function settled() {
   await setImmediate()
   await setImmediate()
 }
+
+test('live language switching uses trusted capability messages without rebuilding the frame', async () => {
+  const { widget, ui, message, sent } = harness(undefined, { locale: 'en' })
+  await widget.open()
+  widget.update({ locale: 'zh-CN' })
+  message('ready', { capabilities: { locale: true } }, { origin: 'https://untrusted.test' })
+  message('ready', { capabilities: { locale: true } }, { source: {} })
+  assert.equal(sent.filter(item => item.message.type === 'set-locale').length, 0)
+  message('ready', { capabilities: { locale: true } })
+  assert.equal(ui.locale, 'zh')
+  assert.equal(ui.isOpen, true)
+  assert.equal(ui.mounts, 0)
+  assert.deepEqual(sent.find(item => item.message.type === 'set-locale')?.message.payload, { locale: 'zh' })
+  widget.update({ theme: 'dark' })
+  assert.equal(ui.locale, 'zh')
+})
+
+test('automatic locale follows browser changes while an explicit host preference stays fixed', () => {
+  const { widget, ui, message } = harness()
+  message('ready', { capabilities: { locale: true } })
+  Object.assign(navigator, { languages: ['zh-CN'] })
+  window.dispatchEvent(new Event('languagechange'))
+  assert.equal(ui.locale, 'zh')
+  widget.update({ locale: 'en' })
+  window.dispatchEvent(new Event('languagechange'))
+  assert.equal(ui.locale, 'en')
+  widget.update({ locale: 'auto' })
+  assert.equal(ui.locale, 'zh')
+  assert.equal(ui.mounts, 0)
+})
+
+test('an old iframe retains its language and state when live locale support is absent', () => {
+  const { widget, ui, message, sent } = harness()
+  message('ready')
+  widget.update({ locale: 'zh' })
+  assert.equal(ui.locale, 'en')
+  assert.equal(ui.mounts, 0)
+  assert.equal(sent.filter(item => item.message.type === 'set-locale').length, 0)
+})
+
+test('initial locale is delivered in the iframe URL without changing the custom embed path', async () => {
+  const { widget, ui } = harness(undefined, { locale: 'en-US', embedPath: '/zh/widget/embed' })
+  ui.hasIframe = false
+  await widget.open()
+  const url = new URL(ui.iframeSrc)
+  assert.equal(url.pathname, '/zh/widget/embed')
+  assert.equal(url.searchParams.get('locale'), 'en-US')
+  assert.equal(ui.locale, 'en')
+})
 
 test('clicking a collapsed tab restores the button, opens feedback and retains position across reload', async () => {
   const baseUrl = 'https://tab-recovery.test'

@@ -8,6 +8,7 @@ import { readPosition, type DockedPosition } from './position'
 import type { AuthReason, InboundMessage, LauncherCloseBehavior, LauncherPlacement, LauncherState, WidgetDisplayOptions, WidgetOptions, WidgetTheme } from './types'
 import { WidgetUi } from './ui'
 import { UnreadTracker } from './unread'
+import { resolveLocale, type WidgetLanguage } from './locale'
 
 export interface BootOptions extends WidgetOptions {
   origin: string
@@ -16,7 +17,6 @@ export interface BootOptions extends WidgetOptions {
   embedPath: string
 }
 
-const LOAD_ERROR = 'Feedback could not be loaded.'
 const PREWARM_TIMEOUT_MS = 3000
 const PREWARM_DELAY_MS = 2500
 
@@ -64,6 +64,10 @@ export class Widget {
   private canUpdateTheme = false
   private frameTheme: WidgetTheme = 'auto'
   private warnedTheme: WidgetTheme | undefined
+  private canUpdateLocale = false
+  private frameLocale: WidgetLanguage = 'en'
+  private sentLocale: WidgetLanguage | undefined
+  private warnedLocale: WidgetLanguage | undefined
   private resumeState: unknown
   private stateSequence = 0
   private stateRequest: { id: string, resolve: (state: unknown) => void } | null = null
@@ -110,6 +114,7 @@ export class Widget {
       this.applyDisplay()
     })
     window.addEventListener('message', this.onMessage)
+    window.addEventListener('languagechange', () => this.applyLocale())
     this.unread.start()
     // A redirect-style `login()` navigated the page away mid-flow; the leftover
     // marker is the only trace that the user was on their way into the widget.
@@ -182,7 +187,31 @@ export class Widget {
     this.ui.setPlacement(placement({ ...this.defaults, ...this.display.launcher }), this.display.zIndex ?? DEFAULT_WIDGET_Z_INDEX, this.position)
     this.ui.setLauncher(this.preference, this.closeBehavior)
     this.applyTheme()
+    this.applyLocale()
     this.applyVisibility()
+  }
+
+  private desiredLocale(): WidgetLanguage {
+    const request = this.display.locale ?? (this.options.embedPath.startsWith('/zh/') ? 'zh' : 'auto')
+    return resolveLocale(request, navigator.languages?.length ? navigator.languages : [navigator.language ?? 'en'])
+  }
+
+  private applyLocale(): void {
+    const language = this.desiredLocale()
+    if (!this.ui.hasIframe) {
+      this.ui.setLocale(language)
+      return
+    }
+    if (this.frameReady && this.canUpdateLocale && (language !== this.frameLocale || language !== this.sentLocale)) {
+      this.ui.frameWindow!.postMessage({ v: 1, type: 'set-locale', payload: { locale: language } }, this.options.origin)
+      this.frameLocale = language
+      this.sentLocale = language
+    }
+    else if (this.frameReady && !this.canUpdateLocale && language !== this.frameLocale && language !== this.warnedLocale) {
+      console.warn('[feedlog/widget] this embed page does not support live language updates; keeping its current language')
+      this.warnedLocale = language
+    }
+    this.ui.setLocale(this.frameLocale)
   }
 
   private applyTheme(): void {
@@ -262,7 +291,7 @@ export class Widget {
     catch {
       // getToken() or exchange threw: a temporary failure, not a sign-out. Keep a
       // working frame if there is one, otherwise offer a retry.
-      if (!this.ui.hasIframe) this.ui.showError(LOAD_ERROR, () => this.retry())
+      if (!this.ui.hasIframe) this.ui.showError(() => this.retry())
     }
     finally {
       if (this.loginCompleted) {
@@ -285,6 +314,11 @@ export class Widget {
     this.canResume = false
     this.frameReady = false
     this.canUpdateTheme = false
+    this.canUpdateLocale = false
+    this.sentLocale = undefined
+    this.warnedLocale = undefined
+    this.frameLocale = this.desiredLocale()
+    this.ui.setLocale(this.frameLocale)
     this.warnedTheme = undefined
     this.frameTheme = this.display.theme ?? 'auto'
     this.ui.setTheme(this.frameTheme)
@@ -299,6 +333,8 @@ export class Widget {
 
     const url = new URL(this.options.embedPath, this.options.baseUrl)
     url.searchParams.set('theme', this.frameTheme)
+    // Explicit locale overrides a custom localized path; legacy paths keep working.
+    if (this.display.locale !== undefined) url.searchParams.set('locale', this.display.locale)
     // The frame needs a concrete targetOrigin for its postMessage calls and
     // cannot derive one reliably: Firefox has no location.ancestorOrigins, and
     // the host's referrer-policy may strip the referrer.
@@ -337,12 +373,15 @@ export class Widget {
         this.canResume = message.payload?.capabilities?.resumeState === true
         this.frameReady = true
         this.canUpdateTheme = message.payload?.capabilities?.theme === true
+        this.canUpdateLocale = message.payload?.capabilities?.locale === true
+        if (!this.canUpdateLocale) this.frameLocale = this.options.embedPath.startsWith('/zh/') ? 'zh' : 'en'
         frame.postMessage({ v: 1, type: 'init', payload: {
           capabilities: { pageContext: true },
           ...(this.canResume && this.resumeState !== undefined ? { resumeState: this.resumeState } : {}),
         } }, this.options.origin)
         this.resumeState = undefined
         this.applyTheme()
+        this.applyLocale()
         this.ui.showContent()
         return
       case 'resume-state':
